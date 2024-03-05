@@ -20,8 +20,8 @@ urlpatterns = [
     path('api/eip-data/',views.Get_Elastic_Ip.as_view(),name='eip-detail-data'),#13
     path('api/detail-cost-data/', views.GetTotalBill.as_view(), name='detail-cost-data'),#Bar Chart#14
     path('api/send_email/',views.Send_cost_Email.as_view(),name='send-mail'),#15 #Email
-    path('api/api-gateway-data',views.Get_APIGateway.as_view(),name='api-gateway'),#16 time
-    path('api/snapshot_data',views.Get_Snapshot_Data.as_view(),name='snapshot_data'),#17
+    path('api/api-gateway-data/',views.Get_APIGateway.as_view(),name='api-gateway'),#16 time
+    path('api/snapshot_data/',views.Get_Snapshot_Data.as_view(),name='snapshot_data'),#17
     
 
     # Graphs
@@ -36,13 +36,22 @@ urlpatterns = [
     path('api/vpc_cost_data/',views.VPC_cost_data.as_view(),name='vpc-cost'),
     path('api/secrets_cost_data/',views.SecretsManager_cost_data.as_view(),name='secrets-cost'),
     path('api/rds_cost_data/',views.RDS_Cost_Data.as_view(),name='rds-cost'),
+    path('api/awsresourcecost',views.AwsServiceCost.as_view(),name='aws-resource-cost'),
 
     #Unused resources
     path('api/unused_resource_data/',views.AWSResourceManager.as_view(),name="unused_resource"),
     path('api/unused_resources/',views.AWS_Unused_Resources.as_view(),name='unused_resource_data'),
 
     #Recommendations
-    path('api/ec2_recommendation/',views.EC2_Recommendations.as_view(),name='ec2-recomendations'),
+    path('api/ec2_recc/',views.EC2_Recommendations.as_view(),name='ec2-recomendations'),
     path('api/ec2_less_than_50/',views.EC2_Utilization.as_view(),name='ec2-utilization'),
     path('api/rds_recommendation/', views.RDS_Recommendation.as_view(), name='rds-recommendation'),
+    path('api/ec2_recommendation/',views.EC2Recommendation.as_view(),name='ec2-recommendation'),
+    path('api/ecr_recommendation/',views.ECRRecommendation.as_view(),name='ecr-recommendation'),
+    path('api/ecs_recommendation/',views.ECSRecommendation.as_view(),name='ecs-recommendation'),
+    path('api/s3_recommendation/',views.S3Recommendation.as_view(),name='s3-recommendation'),
+    path('api/vpc_recommendation/',views.VPCRecommendation.as_view(),name='vpc-recommendation'),
+    path('api/ebs_recommendation/',views.EBSRecommendation.as_view(),name='ebs-recommendation'),
+    path('api/lambda_recommendation/',views.LambdaMetricsAnalyzer.as_view(),name='Lambda-recommendation'),
 ]
+

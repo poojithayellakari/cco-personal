@@ -1,0 +1,148 @@
+[
+    {
+        "Region": "ap-south-1",
+        "Repository": "velansdemo",
+        "Images": [
+            {
+                "Tags": [
+                    "1"
+                ],
+                "Size_in_mb": 103.15523719787598,
+                "lastpulltime": null,
+                "pushedAtTime": "2024-01-20T19:35:22+05:30"
+            },
+            {
+                "Tags": [
+                    "5"
+                ],
+                "Size_in_mb": 103.15523719787598,
+                "lastpulltime": "2024-01-20T20:18:24.298000+05:30",
+                "pushedAtTime": "2024-01-20T20:01:17+05:30"
+            },
+            {
+                "Tags": [
+                    "15"
+                ],
+                "Size_in_mb": 103.15526294708252,
+                "lastpulltime": "2024-01-22T14:17:21.838000+05:30",
+                "pushedAtTime": "2024-01-22T14:07:26+05:30"
+            },
+            {
+                "Tags": [
+                    "2"
+                ],
+                "Size_in_mb": 103.15523719787598,
+                "lastpulltime": "2024-01-20T19:48:45.976000+05:30",
+                "pushedAtTime": "2024-01-20T19:38:08+05:30"
+            },
+            {
+                "Tags": [
+                    "9"
+                ],
+                "Size_in_mb": 103.15523719787598,
+                "lastpulltime": null,
+                "pushedAtTime": "2024-01-20T22:29:28+05:30"
+            }
+        ]
+    },
+    {
+        "Region": "ap-south-1",
+        "Repository": "samplepython",
+        "Images": [
+            {
+                "Tags": [
+                    "trc-sample-python-v1.1"
+                ],
+                "Size_in_mb": 24.827363967895508,
+                "lastpulltime": "2023-10-26T16:24:11.400000+05:30",
+                "pushedAtTime": "2023-10-10T18:03:45+05:30"
+            },
+            {
+                "Tags": [
+                    "<no tags>"
+                ],
+                "Size_in_mb": 24.827261924743652,
+                "lastpulltime": "2023-10-10T18:00:31.442000+05:30",
+                "pushedAtTime": "2023-10-10T17:49:27+05:30"
+            },
+            {
+                "Tags": [
+                    "latest"
+                ],
+                "Size_in_mb": 24.82719135284424,
+                "lastpulltime": "2023-10-10T16:11:37.216000+05:30",
+                "pushedAtTime": "2023-10-10T15:55:06+05:30"
+            }
+        ]
+    },
+    {
+        "Region": "ap-south-1",
+        "Repository": "my-ecr-repo",
+        "Images": []
+    },
+    {
+        "Region": "us-east-1",
+        "Repository": "demoofcostopt",
+        "Images": []
+    },
+    {
+        "Region": "us-east-1",
+        "Repository": "captures2.0",
+        "Images": [
+            {
+                "Tags": [
+                    "latest"
+                ],
+                "Size_in_mb": 25.016191482543945,
+                "lastpulltime": "2024-01-18T21:02:01.592000+05:30",
+                "pushedAtTime": "2024-01-18T20:58:46+05:30"
+            }
+        ]
+    },
+    {
+        "Region": "us-east-1",
+        "Repository": "metadata-api",
+        "Images": [
+            {
+                "Tags": [
+                    "<no tags>"
+                ],
+                "Size_in_mb": 25.02526569366455,
+                "lastpulltime": "2024-01-21T20:58:11.852000+05:30",
+                "pushedAtTime": "2024-01-21T20:57:05+05:30"
+            },
+            {
+                "Tags": [
+                    "v1"
+                ],
+                "Size_in_mb": 25.0356388092041,
+                "lastpulltime": "2024-02-07T11:42:49.776000+05:30",
+                "pushedAtTime": "2024-01-30T15:21:02+05:30"
+            },
+            {
+                "Tags": [
+                    "<no tags>"
+                ],
+                "Size_in_mb": 25.026874542236328,
+                "lastpulltime": "2024-01-21T21:13:10.569000+05:30",
+                "pushedAtTime": "2024-01-21T21:12:10+05:30"
+            },
+            {
+                "Tags": [
+                    "<no tags>"
+                ],
+                "Size_in_mb": 25.02838897705078,
+                "lastpulltime": "2024-02-07T12:34:43.265000+05:30",
+                "pushedAtTime": "2024-01-22T14:13:45+05:30"
+            },
+            {
+                "Tags": [
+                    "<no tags>"
+                ],
+                "Size_in_mb": 25.029841423034668,
+                "lastpulltime": "2024-01-23T16:41:52.352000+05:30",
+                "pushedAtTime": "2024-01-23T16:40:52+05:30"
+            }
+        ]
+    }
+]

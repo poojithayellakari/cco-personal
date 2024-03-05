@@ -1,0 +1,9 @@
+[
+    {
+        "region": "us-east-1",
+        "Function": "apicalltest",
+        "Invocations": [],
+        "AvgDuration": [],
+        "ConcurrentExecutions": []
+    }
+]

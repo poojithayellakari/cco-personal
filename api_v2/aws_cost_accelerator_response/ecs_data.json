@@ -1,0 +1,110 @@
+[
+    {
+        "Region": "ap-south-1",
+        "Clusters": [
+            {
+                "Cluster": "demo",
+                "Services": []
+            }
+        ]
+    },
+    {
+        "Region": "eu-north-1",
+        "Clusters": []
+    },
+    {
+        "Region": "eu-west-3",
+        "Clusters": []
+    },
+    {
+        "Region": "eu-west-2",
+        "Clusters": []
+    },
+    {
+        "Region": "eu-west-1",
+        "Clusters": []
+    },
+    {
+        "Region": "ap-northeast-3",
+        "Clusters": []
+    },
+    {
+        "Region": "ap-northeast-2",
+        "Clusters": []
+    },
+    {
+        "Region": "ap-northeast-1",
+        "Clusters": []
+    },
+    {
+        "Region": "ca-central-1",
+        "Clusters": []
+    },
+    {
+        "Region": "sa-east-1",
+        "Clusters": []
+    },
+    {
+        "Region": "ap-southeast-1",
+        "Clusters": []
+    },
+    {
+        "Region": "ap-southeast-2",
+        "Clusters": []
+    },
+    {
+        "Region": "eu-central-1",
+        "Clusters": []
+    },
+    {
+        "Region": "ap-southeast-3",
+        "Clusters": []
+    },
+    {
+        "Region": "us-east-1",
+        "Clusters": [
+            {
+                "Cluster": "Capture-backend-app",
+                "Services": [
+                    {
+                        "Service": "metadata-service",
+                        "Metrics": [
+                            {
+                                "NetworkRxBytes": "No data available"
+                            },
+                            {
+                                "NetworkTxBytes": "No data available"
+                            },
+                            {
+                                "CpuUtilized": "No data available"
+                            },
+                            {
+                                "MemoryUtilized": "No data available"
+                            }
+                        ],
+                        "Service Info": {
+                            "Status": "ACTIVE",
+                            "Desired Count": 2,
+                            "Running Count": 2,
+                            "Pending Count": 0,
+                            "Task Definition": "arn:aws:ecs:us-east-1:562041613760:task-definition/apis:23",
+                            "Created At": "2024-01-21 20:38:09"
+                        }
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "Region": "us-east-2",
+        "Clusters": []
+    },
+    {
+        "Region": "us-west-1",
+        "Clusters": []
+    },
+    {
+        "Region": "us-west-2",
+        "Clusters": []
+    }
+]

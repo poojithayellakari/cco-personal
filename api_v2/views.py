@@ -35,6 +35,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password,check_password
 from .forms import AWSConfigForm
 import re
+import requests
 class AWSConfigure(APIView):
     authentication_classes=[JWTAuthentication]
     permission_classes=[AllowAny]
@@ -75,12 +76,12 @@ class AWSConfigure(APIView):
                         'account_id': account_id,
                         'iam_user': email.split('/')[-1],
                     }
-                    return Response(response_data, status=status.HTTP_200_OK)
+                    return JsonResponse(response_data, status=status.HTTP_200_OK)
 
                 except (NoCredentialsError, Exception) as e:
                     # An exception occurred, indicating invalid credentials or other error
                     error_message = f"Invalid or missing access_key and secret_key. Error: {str(e)}"
-                    return Response({"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
+                    return JsonResponse({"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
 
             # Return an error response for invalid or missing keys
             return Response({"error": "Invalid or missing access_key and secret_key"}, status=status.HTTP_400_BAD_REQUEST)         
@@ -348,6 +349,19 @@ class EC2_Memory_utilization(APIView):
                     instance_info['last_activity_time'] = str(instance_info['last_activity_time']).split("T")[0]
             response_json = json.dumps(all_utilization_info, indent=4, cls=CustomJSONEncoder)
 
+            service_name = "ec2"  
+            filename = f"{service_name}_data.json"
+
+            
+            output_directory = "api_v2/aws_cost_accelerator_response" 
+            os.makedirs(output_directory, exist_ok=True)
+
+            
+            output_file_path = os.path.join(output_directory, filename)
+            with open(output_file_path, 'w') as f:
+                f.write(response_json)
+
+            
             response = HttpResponse(response_json, content_type='application/json')
             return response
         except Exception as e:
@@ -355,7 +369,7 @@ class EC2_Memory_utilization(APIView):
 
 
 class RDSData(APIView):
-    authentication_classes = [JWTAuthentication]  # Replace with the correct import path
+    authentication_classes = [JWTAuthentication]  
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -384,7 +398,7 @@ class RDSData(APIView):
                 for row in reader:
                     instance_type = row['Instance type']
                     memory = row['Memory']
-                    instance_memory_info[instance_type] = memory
+                    instance_memory_info[instance_type] = float(memory) if memory != 'N/A' else None
 
             # Initialize an empty list to store instance details
             instances_list = []
@@ -411,21 +425,19 @@ class RDSData(APIView):
                     storage = instance.get('AllocatedStorage', 'N/A')
                     allocated_storage = instance['AllocatedStorage']
                     end_time = datetime.utcnow()
+                    units_str = request.GET.get('units')
+                    if units_str is not None and units_str.isdigit():
+                        days = int(units_str)
                     time_range = request.GET.get('time-range')
-                    # Calculate start time based on the time range provided by the user
-                    if time_range == "1 Week":
-                        start_time = end_time - timedelta(weeks=1)
-                    elif time_range == "15 Days":
-                        start_time = end_time - timedelta(days=15)
-                    elif time_range == "1 Month":
-                        start_time = end_time - timedelta(weeks=4 * 1)
-                    elif time_range == "3 Months":
-                        start_time = end_time - timedelta(weeks=4 * 3)
-                    elif time_range == "6 Months":
-                        start_time = end_time - timedelta(weeks=4 * 6)
+                    if time_range == "days":
+                        start_time = end_time - timedelta(days=days)
+                    elif time_range == "weeks":
+                        start_time = end_time - timedelta(weeks=days)
+                    elif time_range == "months":
+                        start_time = end_time - timedelta(weeks=4 * days)
 
                     # Load memory information based on matching instance type
-                    memory = instance_memory_info.get(instance_type, 'N/A')
+                    memory = instance_memory_info.get(instance_type, None)
 
                     # Fetch CPU utilization metric
                     cpu_metric = cloudwatch_client.get_metric_statistics(
@@ -461,12 +473,12 @@ class RDSData(APIView):
 
                     # Get the latest data point for each metric
                     cpu_utilization = cpu_metric['Datapoints'][-1]['Average'] if cpu_metric['Datapoints'] else 'N/A'
-                    freeable_memory = freeable_memory_metric['Datapoints'][-1]['Average'] if freeable_memory_metric[
-                        'Datapoints'] else 'N/A'
+                    freeable_memory = freeable_memory_metric['Datapoints'][-1]['Average'] if freeable_memory_metric['Datapoints'] else 'N/A'
                     freeable_memory_gb = freeable_memory / (1024 ** 3) if freeable_memory != 'N/A' else 'N/A'
-                    free_memory=round(freeable_memory_gb, 2)
-                    used_memory = int(memory)-free_memory
-                    utilized_memory_in_percentage=(used_memory/int(memory))*100
+                    free_memory = (freeable_memory_gb, 2) if freeable_memory != 'N/A' else 'N/A'
+                    used_memory = memory - free_memory if memory is not None and free_memory != 'N/A' else 'N/A'
+                    utilized_memory_in_percentage = (used_memory / memory) * 100 if memory is not None and used_memory != 'N/A' else 'N/A'
+                    
                     # Create a dictionary for the current instance
                     instance_details = {
                         'DBInstanceIdentifier': db_identifier,
@@ -474,10 +486,10 @@ class RDSData(APIView):
                         'Status': status,
                         'DBInstanceClass': db_instance_class,
                         'Memory (GB)': memory,
-                        'CPUUtilization (%)': round(cpu_utilization, 2),
-                        'utilized_memory_in_percentage':utilized_memory_in_percentage,
+                        'CPUUtilization (%)': cpu_utilization,
+                        'utilized_memory_in_percentage': utilized_memory_in_percentage,
                         'UsedMemoryGB': used_memory,
-                        'FreeMemory':free_memory,
+                        'FreeMemory': free_memory,
                         'Storage': storage,
                         'AllocatedStorage': allocated_storage,
                         'ConnectionsRW': db_connections_read_write,
@@ -490,10 +502,14 @@ class RDSData(APIView):
             # Convert the list of dictionaries to a JSON-formatted string
             RDS_data = json.dumps(instances_list, indent=4)
 
+            # Set the response content type to JSON
             response = HttpResponse(RDS_data, content_type='application/json')
+
             return response
         except Exception as e:
             return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
+
+            
 class Secrets_data(APIView):
     authentication_classes=[JWTAuthentication]
     permission_classes=[AllowAny]
@@ -540,6 +556,19 @@ class Secrets_data(APIView):
 
             
             response_json = json.dumps(all_secrets, indent=4)
+            service_name = "secrets"  
+            filename = f"{service_name}_data.json"
+
+            
+            output_directory = "api_v2/aws_cost_accelerator_response" 
+            os.makedirs(output_directory, exist_ok=True)
+
+            
+            output_file_path = os.path.join(output_directory, filename)
+            with open(output_file_path, 'w') as f:
+                f.write(response_json)
+
+            
             response = HttpResponse(response_json, content_type='application/json')
             return response
         except Exception as e:
@@ -596,8 +625,20 @@ def fetch_ecr_data_for_regions(request):
             ecr_data_list.append(ecr_data)
     
     response_json = json.dumps(ecr_data_list, indent=4)
+    service_name = "ecr"  
+    filename = f"{service_name}_data.json"
+
+            
+    output_directory = "api_v2/aws_cost_accelerator_response" 
+    os.makedirs(output_directory, exist_ok=True)
+
+            
+    output_file_path = os.path.join(output_directory, filename)
+    with open(output_file_path, 'w') as f:
+        f.write(response_json)
+
+            
     response = HttpResponse(response_json, content_type='application/json')
-    
     return response
 
 class Get_ECR_Data(APIView):
@@ -628,7 +669,7 @@ class Get_S3_Data(APIView):
             )
             s3_client = session.client('s3')
 
-            three_days_ago = datetime.now() - timedelta(days=3)
+            three_days_ago = datetime.now() - timedelta(days=30)
             date = three_days_ago.strftime('%Y-%m-%d')
 
             # Get list of all S3 buckets
@@ -675,8 +716,20 @@ class Get_S3_Data(APIView):
             # Convert the bucket_data list to JSON format
             json_data = json.dumps(bucket_data, indent=4)
 
-            response = HttpResponse(json_data, content_type='application/json')
+            service_name = "s3"  
+            filename = f"{service_name}_data.json"
+
             
+            output_directory = "api_v2/aws_cost_accelerator_response" 
+            os.makedirs(output_directory, exist_ok=True)
+
+            
+            output_file_path = os.path.join(output_directory, filename)
+            with open(output_file_path, 'w') as f:
+                f.write(json_data)
+
+            
+            response = HttpResponse(json_data, content_type='application/json')
             return response
         except Exception as e:
                 return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
@@ -764,8 +817,9 @@ def fetch_lambda_metrics(self,request,lambda_function_name):
         return None, None, None
 
 class LambdaMetricsView(APIView):
-    authentication_classes=[JWTAuthentication]
-    permission_classes=[AllowAny]
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
     def get(self, request):
         try:
             access_key = settings.AWS_ACCESS_KEY_ID
@@ -780,91 +834,92 @@ class LambdaMetricsView(APIView):
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
             )
-            cloudwatch_client = session.client('cloudwatch')
             lambda_client = session.client('lambda')
 
             end_time = datetime.utcnow()
-            units_str = request.GET.get('units')  # Default to 30 if 'units' not provided
-            end_time = datetime.utcnow()
+            
             time_range=request.GET.get('time-range')
-                            # Calculate start time based on the time range provided by the user
+            # Calculate start time based on the time range provided by the user
             if time_range == "1 Week":
                 start_time = end_time - timedelta(weeks=1)
             elif time_range == "15 Days":
                 start_time = end_time - timedelta(days=15)
-            
             elif time_range == "1 Month":
                 start_time = end_time - timedelta(weeks=4 * 1)
-            
             elif time_range == "3 Months":
                 start_time = end_time - timedelta(weeks=4 * 3)
             elif time_range == "6 Months":
                 start_time = end_time - timedelta(weeks=4 * 6)
-            
+            else:
+                start_time = end_time - timedelta(weeks=4)  # Default to 1 month
 
-            functions = lambda_client.list_functions()
+            regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
             metrics_data = []
 
-            for function in functions['Functions']:
-                lambda_function_name = function['FunctionName']
-                region = function['FunctionArn'].split(':')[3]
-                response = cloudwatch_client.get_metric_data(
-                    MetricDataQueries=[
-                        {
-                            'Id': 'invocations',
-                            'MetricStat': {
-                                'Metric': {
-                                    'Namespace': 'AWS/Lambda',
-                                    'MetricName': 'Invocations',
-                                    'Dimensions': [{'Name': 'FunctionName', 'Value': lambda_function_name}]
-                                },
-                                'Period': 3600,
-                                'Stat': 'Sum'
+            for region in regions:
+                lambda_client = session.client('lambda', region_name=region)
+                functions = lambda_client.list_functions()['Functions']
+                for function in functions:
+                    cloudwatch_client = session.client('cloudwatch', region_name=region)
+                    response = cloudwatch_client.get_metric_data(
+                        MetricDataQueries=[
+                            {
+                                'Id': 'invocations',
+                                'MetricStat': {
+                                    'Metric': {
+                                        'Namespace': 'AWS/Lambda',
+                                        'MetricName': 'Invocations',
+                                        'Dimensions': [{'Name': 'FunctionName', 'Value': function['FunctionName']}]
+                                    },
+                                    'Period': 3600,
+                                    'Stat': 'Sum'
+                                }
+                            },
+                            {
+                                'Id': 'duration',
+                                'MetricStat': {
+                                    'Metric': {
+                                        'Namespace': 'AWS/Lambda',
+                                        'MetricName': 'Duration',
+                                        'Dimensions': [{'Name': 'FunctionName', 'Value': function['FunctionName']}]
+                                    },
+                                    'Period': 3600,
+                                    'Stat': 'Average'
+                                }
+                            },
+                            {
+                                'Id': 'concurrent_executions',
+                                'MetricStat': {
+                                    'Metric': {
+                                        'Namespace': 'AWS/Lambda',
+                                        'MetricName': 'ConcurrentExecutions',
+                                        'Dimensions': [{'Name': 'FunctionName', 'Value': function['FunctionName']}]
+                                    },
+                                    'Period': 3600,
+                                    'Stat': 'Average'
+                                }
                             }
-                        },
-                        {
-                            'Id': 'duration',
-                            'MetricStat': {
-                                'Metric': {
-                                    'Namespace': 'AWS/Lambda',
-                                    'MetricName': 'Duration',
-                                    'Dimensions': [{'Name': 'FunctionName', 'Value': lambda_function_name}]
-                                },
-                                'Period': 3600,
-                                'Stat': 'Average'
-                            }
-                        },
-                        {
-                            'Id': 'concurrent_executions',
-                            'MetricStat': {
-                                'Metric': {
-                                    'Namespace': 'AWS/Lambda',
-                                    'MetricName': 'ConcurrentExecutions',
-                                    'Dimensions': [{'Name': 'FunctionName', 'Value': lambda_function_name}]
-                                },
-                                'Period': 3600,
-                                'Stat': 'Average'
-                            }
-                        }
-                    ],
-                    StartTime=start_time,
-                    EndTime=end_time,
-                )
+                        ],
+                        StartTime=start_time,
+                        EndTime=end_time,
+                    )
 
-                invocations = response['MetricDataResults'][0]['Values']
-                avg_duration = response['MetricDataResults'][1]['Values']
-                concurrent_executions = response['MetricDataResults'][2]['Values']
+                    invocations = response['MetricDataResults'][0]['Values']
+                    avg_duration = response['MetricDataResults'][1]['Values']
+                    concurrent_executions = response['MetricDataResults'][2]['Values']
 
-                metrics_data.append({
-                    "region":region,
-                    "Function": lambda_function_name,
-                    "Invocations": invocations,
-                    "AvgDuration": avg_duration,
-                    "ConcurrentExecutions": concurrent_executions
-                })
+                    metrics_data.append({
+                        "Region": region,
+                        "Function": function['FunctionName'],
+                        "Invocations": invocations,
+                        "AvgDuration": avg_duration,
+                        "ConcurrentExecutions": concurrent_executions
+                    })
+
 
             response_json = json.dumps(metrics_data, indent=4)
-            return HttpResponse(response_json, content_type='application/json')
+            response = HttpResponse(response_json, content_type='application/json')
+            return response
 
         except Exception as e:
             return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
@@ -1100,8 +1155,20 @@ class Get_VPCData(APIView):
             response_json = json.dumps(region_info, indent=4)
 
             # Create an HttpResponse with JSON content
-            response = HttpResponse(response_json, content_type='application/json')
+            service_name = "vpc"  
+            filename = f"{service_name}_data.json"
+
             
+            output_directory = "api_v2/aws_cost_accelerator_response" 
+            os.makedirs(output_directory, exist_ok=True)
+
+            
+            output_file_path = os.path.join(output_directory, filename)
+            with open(output_file_path, 'w') as f:
+                f.write(response_json)
+
+            
+            response = HttpResponse(response_json, content_type='application/json')
             return response
         except Exception as e:
                 return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
@@ -1237,6 +1304,19 @@ class Get_ECS_Data(APIView):
 
             # Convert the data to JSON format
             response_json = json.dumps(all_region_data, indent=4,cls=DateTimeEncoder)
+            service_name = "ecs"  
+            filename = f"{service_name}_data.json"
+
+            
+            output_directory = "api_v2/aws_cost_accelerator_response" 
+            os.makedirs(output_directory, exist_ok=True)
+
+            
+            output_file_path = os.path.join(output_directory, filename)
+            with open(output_file_path, 'w') as f:
+                f.write(response_json)
+
+            
             response = HttpResponse(response_json, content_type='application/json')
             return response
         except Exception as e:
@@ -1352,8 +1432,20 @@ class Get_load_balancer_Data(APIView):
                     })
                     
             response_json = json.dumps(lb_metrics_list, indent=4)
-            response = HttpResponse(response_json, content_type='application/json')
+            service_name = "load_balancer"  
+            filename = f"{service_name}_data.json"
+
             
+            output_directory = "api_v2/aws_cost_accelerator_response" 
+            os.makedirs(output_directory, exist_ok=True)
+
+            
+            output_file_path = os.path.join(output_directory, filename)
+            with open(output_file_path, 'w') as f:
+                f.write(response_json)
+
+            
+            response = HttpResponse(response_json, content_type='application/json')
             return response
         except Exception as e:
                 return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
@@ -1450,10 +1542,20 @@ class Get_EBS_Data(APIView):
                         all_volume_data.append(volume_metrics)
 
                 response_json = json.dumps(all_volume_data, indent=4)
+                service_name = "ebs"  
+                filename = f"{service_name}_data.json"
+
+                
+                output_directory = "api_v2/aws_cost_accelerator_response" 
+                os.makedirs(output_directory, exist_ok=True)
+
+                
+                output_file_path = os.path.join(output_directory, filename)
+                with open(output_file_path, 'w') as f:
+                    f.write(response_json)
+
+                
                 response = HttpResponse(response_json, content_type='application/json')
-                current_date = datetime.now().strftime("%Y-%m-%d")
-                dynamic_filename = f"EBS_data_{current_date}.json"
-                response['Content-Disposition'] = f'attachment; filename="{dynamic_filename}"'
                 return response
             except Exception as e:
                 return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
@@ -1708,6 +1810,19 @@ class Get_Elastic_Ip(APIView):
 
             # Return the Elastic IP data as a JSON response
             json_response_str = json.dumps(elastic_ips_data, indent=4)
+            service_name = "eip"  
+            filename = f"{service_name}_data.json"
+
+            
+            output_directory = "api_v2/aws_cost_accelerator_response" 
+            os.makedirs(output_directory, exist_ok=True)
+
+            
+            output_file_path = os.path.join(output_directory, filename)
+            with open(output_file_path, 'w') as f:
+                f.write(json_response_str)
+
+            
             response = HttpResponse(json_response_str, content_type='application/json')
             return response
         except Exception as e:
@@ -1917,6 +2032,19 @@ class Get_APIGateway(APIView):
                     
                     api_metrics_data.append(api_gateway_data)
             json_response_str = json.dumps(api_metrics_data, indent=4)
+            service_name = "api_gateway"  
+            filename = f"{service_name}_data.json"
+
+            
+            output_directory = "api_v2/aws_cost_accelerator_response" 
+            os.makedirs(output_directory, exist_ok=True)
+
+            
+            output_file_path = os.path.join(output_directory, filename)
+            with open(output_file_path, 'w') as f:
+                f.write(json_response_str)
+
+            
             response = HttpResponse(json_response_str, content_type='application/json')
             return response
         except Exception as e:
@@ -1964,6 +2092,19 @@ class Get_Snapshot_Data(APIView):
             # Convert the list of dictionaries to a JSON string
             json_data = json.dumps(snapshot_data, indent=4)
 
+            service_name = "snapshot"  
+            filename = f"{service_name}_data.json"
+
+            
+            output_directory = "api_v2/aws_cost_accelerator_response" 
+            os.makedirs(output_directory, exist_ok=True)
+
+            
+            output_file_path = os.path.join(output_directory, filename)
+            with open(output_file_path, 'w') as f:
+                f.write(json_data)
+
+            
             response = HttpResponse(json_data, content_type='application/json')
             return response
         except Exception as e:
@@ -4396,3 +4537,803 @@ class RDS_Recommendation(APIView):
 
         except Exception as e:
             return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
+
+
+class EC2Recommendation(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def __init__(self):
+        self.ec2_url = 'http://13.232.78.91:8080/api/ec2_memory_data/?time-range=months&units=1'
+
+    def load_data(self):
+        """
+        Load the EC2 utilization data from a URL.
+        """
+        response = requests.get(self.ec2_url)
+        if response.status_code == 200:
+            data = response.json()
+            return pd.DataFrame(data)
+        else:
+            raise Exception(f"Failed to load data from URL: {self.ec2_url}. Status code: {response.status_code}")
+
+    def identify_unused_instances(self, data, cpu_threshold, memory_threshold):
+        """
+        Identify instances for termination based on low utilization or stopped state.
+        """
+        stopped_instances = data[data['state'] == 'stopped']['instance_id'].unique()
+        low_utilized_instances = data[(data['average_utilization'] < cpu_threshold) & 
+                                      (data['metric_type'].isin(['cpu', 'memory']))]['instance_id'].unique()
+        return list(set(stopped_instances) | set(low_utilized_instances))
+
+    def rightsizing_instances(self, data, high_threshold, low_threshold):
+        """
+        Identify instances for upsizing or downsizing.
+        """
+        numeric_cols = ['average_utilization']
+        grouped_data = data.groupby(['instance_id', 'metric_type'])[numeric_cols].mean().reset_index()
+        upsizing_instances = grouped_data[grouped_data['average_utilization'] > high_threshold]['instance_id'].unique()
+        downsizing_instances = grouped_data[grouped_data['average_utilization'] < low_threshold]['instance_id'].unique()
+        return list(upsizing_instances), list(downsizing_instances)
+
+    def volume_recommendations(self, data, high_disk_threshold, low_disk_threshold):
+        """
+        Provide volume recommendations based on disk usage.
+        """
+        numeric_cols = ['average_utilization']
+        grouped_data = data.groupby(['instance_id', 'metric_type'])[numeric_cols].mean().reset_index()
+        high_disk_utilization_instances = grouped_data[(grouped_data['metric_type'] == 'disk') & (grouped_data['average_utilization'] > high_disk_threshold)]['instance_id'].unique()
+        low_disk_utilization_instances = grouped_data[(grouped_data['metric_type'] == 'disk') & (grouped_data['average_utilization'] < low_disk_threshold)]['instance_id'].unique()
+        return list(high_disk_utilization_instances), list(low_disk_utilization_instances)
+
+    def get(self, request, format=None):
+        try:
+            ec2_data = self.load_data()
+
+            # Define thresholds
+            cpu_low_threshold = 5
+            memory_low_threshold = 5
+            high_utilization_threshold = 80
+            low_utilization_threshold = 20
+            high_disk_threshold = 75
+            low_disk_threshold = 10
+
+            # Analysis
+            instances_to_terminate = self.identify_unused_instances(ec2_data, cpu_low_threshold, memory_low_threshold)
+            upsizing_instances, downsizing_instances = self.rightsizing_instances(ec2_data, high_utilization_threshold, low_utilization_threshold)
+            high_disk_instances, low_disk_instances = self.volume_recommendations(ec2_data, high_disk_threshold, low_disk_threshold)
+
+            # Construct JSON response
+            response = {
+                "instances_to_terminate": instances_to_terminate,
+                "instances_to_upsize": upsizing_instances,
+                "instances_to_downsize": downsizing_instances,
+                "instances_needing_more_disk_space": high_disk_instances,
+                "instances_with_possible_excess_disk_space": low_disk_instances
+            }
+
+            return Response(response)
+        except Exception as e:
+            return Response({"error": f"An error occurred: {e}"}, status=500)
+class ECRRecommendation(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def __init__(self):
+        self.ecr_url = 'http://13.232.78.91:8080/api/ecr-detail-data/'
+
+    def load_data(self):
+        """
+        Load the ECR (Elastic Container Registry) data from the provided URL.
+        """
+        response = requests.get(self.ecr_url)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to load data from URL: {self.ecr_url}. Status code: {response.status_code}")
+
+    def make_repository_recommendations(self, ecr_data):
+        """
+        Make recommendations based on last pull time.
+        """
+        recommendations = []
+        current_date = datetime.now(timezone.utc)
+        days_threshold = 30
+
+        for repo in ecr_data:
+            for image in repo.get('Images', []):
+                last_pull_time_str = image.get('lastpulltime')
+                if last_pull_time_str:
+                    last_pull_time = datetime.strptime(last_pull_time_str, '%Y-%m-%dT%H:%M:%S.%f%z').astimezone(timezone.utc)
+                    if (current_date - last_pull_time).days > days_threshold:
+                        recommendations.append({
+                            'Repository': repo['Repository'],
+                            'Image_Tag': ', '.join(image['Tags']),
+                            'Recommendation': 'Consider deleting the repository and adding a lifecycle policy'
+                        })
+
+        return recommendations
+
+    def get(self, request):
+        try:
+            """
+            Get recommendations based on the ECR data and return as JSON response.
+            """
+            ecr_data = self.load_data()
+            repository_recommendations = self.make_repository_recommendations(ecr_data)
+
+            # Convert the recommendations to a JSON response
+            return Response(repository_recommendations)
+        except Exception as e:
+            return Response({"error": f"An error occurred: {e}"}, status=500)
+class ECSRecommendation(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def __init__(self):
+        self.ecs_url = 'http://13.232.78.91:8080/api/ecs-data/?time-range=months&units=1'
+    def load_data(self):
+        """
+        Load the ECS (Elastic Container Service) data from the provided URL.
+        """
+        response = requests.get(self.ecs_url)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to load data from URL: {self.ecs_url}. Status code: {response.status_code}")
+
+    def recommend_downsizing(self, ecs_data):
+        """
+        Analyze CPU utilization and recommend downsizing if necessary.
+        """
+        recommendations = []
+
+        for region_data in ecs_data:
+            for cluster_data in region_data['Clusters']:
+                for service_data in cluster_data.get('Services', []):
+                    cpu_utilized = service_data['Metrics'][2].get('CpuUtilized', 'No data available')
+                    if cpu_utilized != 'No data available' and float(cpu_utilized) < 50:
+                        recommendations.append({
+                            'Cluster': cluster_data['Cluster'],
+                            'Service': service_data['Service'],
+                            'Current CPU Utilization': cpu_utilized,
+                            'Recommendation': 'Consider downsizing the instance'
+                        })
+
+        return recommendations
+
+    def get(self, request):
+        try:
+            ecs_data = self.load_data()
+
+            # Generate recommendations based on the ECS data
+            downsizing_recommendations = self.recommend_downsizing(ecs_data)
+
+            # Return the recommendations as a JSON response
+            return Response(downsizing_recommendations)
+
+        except Exception as e:
+            return Response({"error": f"An error occurred: {e}"}, status=500)
+class S3Recommendation(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def __init__(self):
+        self.s3_url = 'http://13.232.78.91:8080/api/s3-detail-data/'
+
+    def load_data(self):
+        """
+        Load the S3 data from the provided URL.
+        """
+        response = requests.get(self.s3_url)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to load data from URL: {self.s3_url}. Status code: {response.status_code}")
+
+    def recommend_storage_class_change(self, bucket_data):
+        """
+        Determine if the storage class should be changed based on the last modified date.
+        """
+        recommendations = []
+
+        # Define the threshold in days
+        threshold_days = 90
+        # Define the date threshold
+        date_threshold = datetime.now() - timedelta(days=threshold_days)
+
+        # Loop through each bucket in the data
+        for bucket in bucket_data:
+            # Parse the 'Last Modified Date'
+            try:
+                last_modified_date = datetime.strptime(bucket.get('Last Modified Date'), '%Y-%m-%d')
+            except (ValueError, TypeError):
+                # If there's an error parsing the date, we skip the recommendation for this bucket
+                continue
+
+            # Check if the last modified date is older than the threshold and the storage class is neither GLACIER nor STANDARD_IA
+            if last_modified_date < date_threshold and bucket['Storage Class'] not in ['GLACIER', 'STANDARD_IA']:
+                # Add a recommendation
+                recommendations.append({
+                    'Bucket': bucket['Bucket'],
+                    'Current Storage Class': bucket['Storage Class'],
+                    'Recommended Storage Class': 'GLACIER/STANDARD_IA',
+                    'Last Modified Date': bucket['Last Modified Date']
+                })
+
+        return recommendations
+
+    def get(self, request):
+        try:
+            """
+            Get recommendations based on the S3 data.
+            """
+            s3_data = self.load_data()
+            recommendations = self.recommend_storage_class_change(s3_data)
+            return Response(recommendations)
+        except Exception as e:
+            return Response({"error": f"An error occurred: {e}"}, status=500)
+class VPCRecommendation(APIView):
+    authentication_classes = [JWTAuthentication]  # Changed to SessionAuthentication
+    permission_classes = [AllowAny]
+    def __init__(self):
+        self.vpc_url = 'http://13.232.78.91:8080/api/vpc-data/'
+    def load_data(self):
+        """
+        Load the VPC data from a URL.
+        """
+        response = requests.get(self.vpc_url)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to fetch data from URL: {self.vpc_url}. Status code: {response.status_code}")
+
+    def identify_unused_nat_gateways(self, vpc_data):
+        """
+        Identify potentially unused NAT Gateways for cost savings.
+        """
+        potential_unused_nat_gws = vpc_data.get('NAT Gateway ID', {}).get('value_counts', {}).get(1, [])
+        recommendations = [{
+            'NAT Gateway ID': nat_gw_id,
+            'Region': vpc_data.get('Region', ''),
+            'Recommendation': 'Review if NAT Gateway is needed or can be removed'
+        } for nat_gw_id in potential_unused_nat_gws]
+        return recommendations
+
+    def identify_unattached_elastic_ips(self, vpc_data):
+        """
+        Identify unattached Elastic IPs for cost savings.
+        """
+        recommendations = [{
+            'Elastic IP Allocation ID': eip_id,
+            'Recommendation': 'Release unattached Elastic IP to avoid charges'
+        } for eip_id in vpc_data.get('Elastic IP Allocation ID (NAT GW)', []) if 'eipalloc' in eip_id]
+        return recommendations
+
+    def recommend_reserved_instances_or_savings_plans(self):
+        """
+        Placeholder function for recommending Reserved Instances or Savings Plans.
+        """
+        return [{
+            'Recommendation': 'Evaluate usage for potential Reserved Instances or Savings Plans'
+        }]
+
+    def generate_vpc_cost_savings_report(self, url):
+        """
+        Generate cost-saving recommendations for VPC.
+        """
+        try:
+            vpc_data = self.load_data()
+            nat_gw_recommendations = self.identify_unused_nat_gateways(vpc_data)
+            eip_recommendations = self.identify_unattached_elastic_ips(vpc_data)
+            ri_sp_recommendations = self.recommend_reserved_instances_or_savings_plans()
+
+            report = {
+                'NAT Gateway Recommendations': nat_gw_recommendations,
+                'Elastic IP Recommendations': eip_recommendations,
+                'Reserved Instances/Savings Plans': ri_sp_recommendations
+            }
+            return report
+        except Exception as e:
+            # Print the exception for debugging purposes
+            print(f"An error occurred: {e}")
+            raise  # Re-raise the exception
+
+    def get(self, request):
+        """
+        Get VPC cost-savings report as JSON response.
+        """
+        try:
+            
+            vpc_cost_savings_report = self.generate_vpc_cost_savings_report()
+            return Response(vpc_cost_savings_report)
+        except Exception as e:
+            return Response({"error": f"An error occurred: {e}"}, status=500)
+
+class EBSRecommendation(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def __init__(self):
+        self.ebs_url = '13.232.78.91:8080/api/ebs-data/?time-range=months&units=1'
+
+    def fetch_ebs_data(self):
+        """
+        Fetch the EBS data from the provided API URL.
+        """
+        try:
+            response = requests.get(self.ebs_url)
+            response.raise_for_status()  # Raises an HTTPError if the HTTP request returned an unsuccessful status code.
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Failed to fetch EBS data from API URL: {self.ebs_url}. Error: {e}")
+
+    def analyze_ebs_data(self, ebs_json):
+        recommendations = []
+
+        for volume in ebs_json:
+            volume_id = volume["VolumeId"]
+            volume_type = volume["VolumeType"]
+            size_gb = volume["SizeGB"]
+            iops = volume["Iops"]
+            avg_read_ops = volume.get("Average VolumeReadOps")
+            avg_write_ops = volume.get("Average VolumeWriteOps")
+
+            # Check for volumes that may be underutilized based on null average read/write operations
+            if avg_read_ops is None and avg_write_ops is None:
+                recommendations.append({
+                    'VolumeId': volume_id,
+                    'Recommendation': 'Review for potential downsizing or deletion due to lack of read/write activity.'
+                })
+            # Additional checks could include analyzing IOPS and size to make recommendations on changing volume types
+
+        return recommendations
+
+    def generate_ebs_recommendations_report(self):
+        try:
+            ebs_data = self.fetch_ebs_data()
+            recommendations = self.analyze_ebs_data(ebs_data)
+            return recommendations
+        except Exception as e:
+            # Print the exception for debugging purposes
+            print(f"An error occurred: {e}")
+            raise  # Re-raise the exception
+
+    def get(self, request):
+        """
+        Get EBS recommendations report as JSON response.
+        """
+        try:
+            ebs_recommendations_report = self.generate_ebs_recommendations_report()
+            return Response(ebs_recommendations_report)
+        except Exception as e:
+            return Response({"error": f"An error occurred: {e}"}, status=500)
+class LambdaMetricsAnalyzer(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def __init__(self):
+        self.api_url = 'http://13.232.78.91:8080/api/lambda-metrics/?time-range=months&units=3'
+
+    def fetch_lambda_metrics(self):
+        """
+        Fetch Lambda function metrics from the provided API URL.
+        """
+        try:
+            response = requests.get(self.api_url)
+            response.raise_for_status()  # Ensure successful response
+            lambda_metrics = response.json()
+            return lambda_metrics
+        except requests.RequestException as e:
+            print(f"Error fetching data from API: {e}")
+            return []
+
+    def analyze_lambda_metrics(self, lambda_metrics):
+        recommendations = []
+
+        for function in lambda_metrics:
+            func_name = function["Function"]
+            invocations = function.get("Invocations", [])
+            avg_duration = function.get("AvgDuration", [])
+            concurrent_executions = function.get("ConcurrentExecutions", [])
+
+            # Assuming these are lists of numbers, we can directly sum them up and calculate averages
+            total_invocations = sum(invocations)
+            average_duration = sum(avg_duration) / len(avg_duration) if avg_duration else 0
+            max_concurrency = max(concurrent_executions) if concurrent_executions else 0
+
+            if total_invocations == 0:
+                recommendations.append({
+                    'Function': func_name,
+                    'Recommendation': 'Consider decommissioning due to lack of usage.'
+                })
+            
+            if average_duration > 500:  # Threshold in milliseconds
+                recommendations.append({
+                    'Function': func_name,
+                    'Recommendation': 'Review for performance optimization (high average duration).'
+                })
+            
+            if max_concurrency >= 5:  # Example threshold
+                recommendations.append({
+                    'Function': func_name,
+                    'Recommendation': 'Review concurrency settings (high concurrent executions).'
+                })
+            
+        return recommendations
+
+    def get(self, request):
+        """
+        Get Lambda recommendations report as JSON response.
+        """
+        try:
+            lambda_metrics = self.fetch_lambda_metrics()
+            lambda_recommendations_report = self.analyze_lambda_metrics(lambda_metrics)
+            return Response(lambda_recommendations_report)
+        except Exception as e:
+            return Response({"error": f"An error occurred: {e}"}, status=500)
+
+
+class AwsServiceCost(APIView):
+    def get (self , request):
+         authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+    
+    def get(self, request, *args, **kwargs):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+            
+            # Check if AWS credentials are configured
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+            # Configure the AWS client with the stored credentials
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+            )
+            ce_client = session.client('ce')
+
+            # Get parameters from the request
+            units_str = request.GET.get("units")
+            time_range = request.GET.get("time-range")
+
+            end_time = datetime.utcnow()
+            time_range=request.GET.get('time-range')
+                            # Calculate start time based on the time range provided by the user
+            if time_range == "1 Week":
+                start_time = end_time - timedelta(weeks=1)
+            elif time_range == "15 Days":
+                start_time = end_time - timedelta(days=15)
+            
+            elif time_range == "1 Month":
+                start_time = end_time - timedelta(weeks=4 * 1)
+            
+            elif time_range == "3 Months":
+                start_time = end_time - timedelta(weeks=4 * 3)
+            elif time_range == "6 Months":
+                start_time = end_time - timedelta(weeks=4 * 6)
+            else:
+                # Handle the case when units_str is not provided or not a digit
+                return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+
+            filter_ec2 = {
+                'Dimensions': {
+                    'Key': 'SERVICE',
+                    'Values': ['Amazon Elastic Compute Cloud - Compute']
+                }
+            }
+
+            response = ce_client.get_cost_and_usage(
+                TimePeriod={
+                    'Start': start_time.strftime('%Y-%m-%d'),
+                    'End': end_time.strftime('%Y-%m-%d'),
+                },
+                Granularity='DAILY',
+                Filter=filter_ec2,
+                Metrics=['UnblendedCost']
+            )
+
+            data = response['ResultsByTime']
+
+            monthly_costs = {}
+
+            for result in data:
+                start_date = result['TimePeriod']['Start']
+                month_key = start_date[:7]
+                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+                if month_key not in monthly_costs:
+                    monthly_costs[month_key] = Decimal(0)
+
+                monthly_costs[month_key] += Decimal(daily_cost)
+
+            total_ec2_cost = round(sum(monthly_costs.values()), 5)
+            average_monthly_cost = round(total_ec2_cost / len(monthly_costs), 5)
+
+            # Round monthly costs to about 5 decimals
+            for key, value in monthly_costs.items():
+                monthly_costs[key] = round(value, 5)
+        # *********************** S3 data ***********************
+            filter_s3 = {
+                'Dimensions': {
+                    'Key': 'SERVICE',
+                    'Values': ['Amazon Simple Storage Service']
+                }
+            }
+
+            response = ce_client.get_cost_and_usage(
+                TimePeriod={
+                    'Start': start_time.strftime('%Y-%m-%d'),
+                    'End': end_time.strftime('%Y-%m-%d'),
+                },
+                Granularity='DAILY',
+                Filter=filter_s3,
+                Metrics=['UnblendedCost']
+            )
+
+            data = response['ResultsByTime']
+
+            monthly_costs = {}
+
+            for result in data:
+                start_date = result['TimePeriod']['Start']
+                month_key = start_date[:7]
+                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+                if month_key not in monthly_costs:
+                    monthly_costs[month_key] = Decimal(0)
+
+                monthly_costs[month_key] += Decimal(daily_cost)
+
+            total_s3_cost = round(sum(monthly_costs.values()), 5)
+            average_monthly_cost = round(total_s3_cost / len(monthly_costs), 5)
+
+            # Round monthly costs to about 5 decimals
+            for key, value in monthly_costs.items():
+                monthly_costs[key] = round(value, 5)
+            # ************************************* ECR cost data ****************************
+                filter_ecr = {
+                'Dimensions': {
+                    'Key': 'SERVICE',
+                    'Values': ['Amazon Elastic Container Registry']
+                }
+            }
+
+            response = ce_client.get_cost_and_usage(
+                TimePeriod={
+                    'Start': start_time.strftime('%Y-%m-%d'),
+                    'End': end_time.strftime('%Y-%m-%d'),
+                },
+                Granularity='DAILY',
+                Filter=filter_ecr,
+                Metrics=['UnblendedCost']
+            )
+
+            data = response['ResultsByTime']
+
+            monthly_costs = {}
+
+            for result in data:
+                start_date = result['TimePeriod']['Start']
+                month_key = start_date[:7]
+                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+                if month_key not in monthly_costs:
+                    monthly_costs[month_key] = Decimal(0)
+
+                monthly_costs[month_key] += Decimal(daily_cost)
+
+            total_ecr_cost = round(sum(monthly_costs.values()), 5)
+            average_monthly_cost = round(total_ecr_cost / len(monthly_costs), 5)
+
+            # Round monthly costs to about 5 decimals
+            for key, value in monthly_costs.items():
+                monthly_costs[key] = round(value, 5)
+            # ********************** Lambda cost data ****************************
+            filter_lambda = {
+                'Dimensions': {
+                    'Key': 'SERVICE',
+                    'Values': ['AWS Lambda']
+                }
+            }
+
+            response = ce_client.get_cost_and_usage(
+                TimePeriod={
+                    'Start': start_time.strftime('%Y-%m-%d'),
+                    'End': end_time.strftime('%Y-%m-%d'),
+                },
+                Granularity='DAILY',
+                Filter=filter_lambda,
+                Metrics=['UnblendedCost']
+            )
+
+            data = response['ResultsByTime']
+
+            monthly_costs = {}
+
+            for result in data:
+                start_date = result['TimePeriod']['Start']
+                month_key = start_date[:7]
+                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+                if month_key not in monthly_costs:
+                    monthly_costs[month_key] = Decimal(0)
+
+                monthly_costs[month_key] += Decimal(daily_cost)
+
+            total_lambda_cost = round(sum(monthly_costs.values()), 5)
+            average_monthly_cost = round(total_lambda_cost / len(monthly_costs), 5)
+
+            # Round monthly costs to about 5 decimals
+            for key, value in monthly_costs.items():
+                monthly_costs[key] = round(value, 5)
+            # *********************** ECS cost data ******************************
+                filter_ecs = {
+                'Dimensions': {
+                    'Key': 'SERVICE',
+                    'Values': ['Amazon Elastic Container Service']
+                }
+            }
+
+            response = ce_client.get_cost_and_usage(
+                TimePeriod={
+                    'Start': start_time.strftime('%Y-%m-%d'),
+                    'End': end_time.strftime('%Y-%m-%d'),
+                },
+                Granularity='DAILY',
+                Filter=filter_ecs,
+                Metrics=['UnblendedCost']
+            )
+
+            data = response['ResultsByTime']
+
+            monthly_costs = {}
+
+            for result in data:
+                start_date = result['TimePeriod']['Start']
+                month_key = start_date[:7]
+                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+                if month_key not in monthly_costs:
+                    monthly_costs[month_key] = Decimal(0)
+
+                monthly_costs[month_key] += Decimal(daily_cost)
+
+            total_ecs_cost = round(sum(monthly_costs.values()), 5)
+            average_monthly_cost = round(total_ecs_cost / len(monthly_costs), 5)
+
+            # Round monthly costs to about 5 decimals
+            for key, value in monthly_costs.items():
+                monthly_costs[key] = round(value, 5)
+            # ******************************* WAF cost data *******************************
+                filter_waf = {
+                'Dimensions': {
+                    'Key': 'SERVICE',
+                    'Values': ['AWS WAF']
+                }
+            }
+
+            response = ce_client.get_cost_and_usage(
+                TimePeriod={
+                    'Start': start_time.strftime('%Y-%m-%d'),
+                    'End': end_time.strftime('%Y-%m-%d'),
+                },
+                Granularity='DAILY',
+                Filter=filter_waf,
+                Metrics=['UnblendedCost']
+            )
+
+            data = response['ResultsByTime']
+
+            monthly_costs = {}
+
+            for result in data:
+                start_date = result['TimePeriod']['Start']
+                month_key = start_date[:7]
+                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+                if month_key not in monthly_costs:
+                    monthly_costs[month_key] = Decimal(0)
+
+                monthly_costs[month_key] += Decimal(daily_cost)
+
+            total_waf_cost = round(sum(monthly_costs.values()), 5)
+            average_monthly_cost = round(total_waf_cost / len(monthly_costs), 5)
+
+            # Round monthly costs to about 5 decimals
+            for key, value in monthly_costs.items():
+                monthly_costs[key] = round(value, 5)
+            # ******************* Secrets cost data *************************
+                filter_secrets = {
+                'Dimensions': {
+                    'Key': 'SERVICE',
+                    'Values': ['AWS Secrets Manager']
+                }
+            }
+
+            response = ce_client.get_cost_and_usage(
+                TimePeriod={
+                    'Start': start_time.strftime('%Y-%m-%d'),
+                    'End': end_time.strftime('%Y-%m-%d'),
+                },
+                Granularity='DAILY',
+                Filter=filter_secrets,
+                Metrics=['UnblendedCost']
+            )
+
+            data = response['ResultsByTime']
+
+            monthly_costs = {}
+
+            for result in data:
+                start_date = result['TimePeriod']['Start']
+                month_key = start_date[:7]
+                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+                if month_key not in monthly_costs:
+                    monthly_costs[month_key] = Decimal(0)
+
+                monthly_costs[month_key] += Decimal(daily_cost)
+
+            total_secrets_cost = round(sum(monthly_costs.values()), 5)
+            average_monthly_cost = round(total_secrets_cost / len(monthly_costs), 5)
+
+            # Round monthly costs to about 5 decimals
+            for key, value in monthly_costs.items():
+                monthly_costs[key] = round(value, 5)
+            # **************************** RDS cost data **************************
+            filter_rds = {
+                'Dimensions': {
+                    'Key': 'SERVICE',
+                    'Values': ['Amazon Relational Database Service']
+                }
+            }
+
+            response = ce_client.get_cost_and_usage(
+                TimePeriod={
+                    'Start': start_time.strftime('%Y-%m-%d'),
+                    'End': end_time.strftime('%Y-%m-%d'),
+                },
+                Granularity='DAILY',
+                Filter=filter_rds,
+                Metrics=['UnblendedCost']
+            )
+
+            data = response['ResultsByTime']
+
+            monthly_costs = {}
+
+            for result in data:
+                start_date = result['TimePeriod']['Start']
+                month_key = start_date[:7]
+                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+                if month_key not in monthly_costs:
+                    monthly_costs[month_key] = Decimal(0)
+
+                monthly_costs[month_key] += Decimal(daily_cost)
+
+            total_rds_cost = round(sum(monthly_costs.values()), 5)
+            average_monthly_cost = round(total_rds_cost / len(monthly_costs), 5)
+
+            # Round monthly costs to about 5 decimals
+            for key, value in monthly_costs.items():
+                monthly_costs[key] = round(value, 5)
+            response_data = json.dumps([
+               {"name":"EC2", "total_cost":total_ec2_cost},
+               {"name":"S3", "total_cost":total_s3_cost},
+               {"name":"ECR", "total_cost":total_ecr_cost},
+               {"name":"Lambda", "total_cost":total_lambda_cost},
+               {"name":"ECS", "total_cost":total_ecs_cost},
+               {"name":"WAF", "total_cost":total_waf_cost},
+               {"name":"Secrets", "total_cost":total_secrets_cost},
+               {"name":"RDS", "total_cost":total_rds_cost},
+
+            ], cls=DecimalEncoder)
+            
+            response = HttpResponse(response_data, content_type='application/json')
+            return response
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)

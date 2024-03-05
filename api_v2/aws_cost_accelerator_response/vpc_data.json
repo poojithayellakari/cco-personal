@@ -1,0 +1,763 @@
+{
+    "ap-south-1": [
+        {
+            "VPC ID": "vpc-06a7213b1ab1da3a2",
+            "CIDR Block": "100.0.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-03cd0effdf3904c39",
+                    "Location": "ap-south-1a",
+                    "CIDR Block": "100.0.0.0/24"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-0219ceb353e9012c9",
+                    "VPC IDs": "vpc-0267acc4183c2a36a"
+                },
+                {
+                    "IGW ID": "igw-0ad0066b3c886c920",
+                    "VPC IDs": "vpc-0bef3fade54ab0e5d"
+                },
+                {
+                    "IGW ID": "igw-0d3448e422ee3408b",
+                    "VPC IDs": "vpc-0ce1274a22b1bffc7"
+                }
+            ],
+            "NAT Gateways": []
+        },
+        {
+            "VPC ID": "vpc-0ce1274a22b1bffc7",
+            "CIDR Block": "10.0.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-0619629492cdf776f",
+                    "Location": "ap-south-1a",
+                    "CIDR Block": "10.0.1.0/24"
+                },
+                {
+                    "Subnet ID": "subnet-0904eedd06df23a8a",
+                    "Location": "ap-south-1c",
+                    "CIDR Block": "10.0.3.0/24"
+                },
+                {
+                    "Subnet ID": "subnet-0ee33509cd0896496",
+                    "Location": "ap-south-1b",
+                    "CIDR Block": "10.0.2.0/24"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-0219ceb353e9012c9",
+                    "VPC IDs": "vpc-0267acc4183c2a36a"
+                },
+                {
+                    "IGW ID": "igw-0ad0066b3c886c920",
+                    "VPC IDs": "vpc-0bef3fade54ab0e5d"
+                },
+                {
+                    "IGW ID": "igw-0d3448e422ee3408b",
+                    "VPC IDs": "vpc-0ce1274a22b1bffc7"
+                }
+            ],
+            "NAT Gateways": []
+        },
+        {
+            "VPC ID": "vpc-0bef3fade54ab0e5d",
+            "CIDR Block": "10.0.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-0965c504597149391",
+                    "Location": "ap-south-1c",
+                    "CIDR Block": "10.0.3.0/24"
+                },
+                {
+                    "Subnet ID": "subnet-002944bf910a2182e",
+                    "Location": "ap-south-1a",
+                    "CIDR Block": "10.0.1.0/24"
+                },
+                {
+                    "Subnet ID": "subnet-0f276754ef6d5fbbc",
+                    "Location": "ap-south-1b",
+                    "CIDR Block": "10.0.2.0/24"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-0219ceb353e9012c9",
+                    "VPC IDs": "vpc-0267acc4183c2a36a"
+                },
+                {
+                    "IGW ID": "igw-0ad0066b3c886c920",
+                    "VPC IDs": "vpc-0bef3fade54ab0e5d"
+                },
+                {
+                    "IGW ID": "igw-0d3448e422ee3408b",
+                    "VPC IDs": "vpc-0ce1274a22b1bffc7"
+                }
+            ],
+            "NAT Gateways": []
+        },
+        {
+            "VPC ID": "vpc-0267acc4183c2a36a",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-0070622a482a36dbb",
+                    "Location": "ap-south-1c",
+                    "CIDR Block": "172.31.16.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0b7dfcd2ead8b00a6",
+                    "Location": "ap-south-1b",
+                    "CIDR Block": "172.31.0.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0673de5a17becc541",
+                    "Location": "ap-south-1a",
+                    "CIDR Block": "172.31.32.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-0219ceb353e9012c9",
+                    "VPC IDs": "vpc-0267acc4183c2a36a"
+                },
+                {
+                    "IGW ID": "igw-0ad0066b3c886c920",
+                    "VPC IDs": "vpc-0bef3fade54ab0e5d"
+                },
+                {
+                    "IGW ID": "igw-0d3448e422ee3408b",
+                    "VPC IDs": "vpc-0ce1274a22b1bffc7"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "eu-north-1": [
+        {
+            "VPC ID": "vpc-0ee33fa2f770c942a",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-0e9c9ef00561c5bc3",
+                    "Location": "eu-north-1b",
+                    "CIDR Block": "172.31.32.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0d0007e1a84e57cda",
+                    "Location": "eu-north-1a",
+                    "CIDR Block": "172.31.16.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-05415f8657cd2cb6f",
+                    "Location": "eu-north-1c",
+                    "CIDR Block": "172.31.0.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-028ab2276a5a5171b",
+                    "VPC IDs": "vpc-0ee33fa2f770c942a"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "eu-west-3": [
+        {
+            "VPC ID": "vpc-01a56bfc112d99726",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-066fc3fb2ff58e686",
+                    "Location": "eu-west-3b",
+                    "CIDR Block": "172.31.16.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0181d2899a5c30b45",
+                    "Location": "eu-west-3a",
+                    "CIDR Block": "172.31.0.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0876b88b8c7c5fc8a",
+                    "Location": "eu-west-3c",
+                    "CIDR Block": "172.31.32.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-040d1e7d165eb3eca",
+                    "VPC IDs": "vpc-01a56bfc112d99726"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "eu-west-2": [
+        {
+            "VPC ID": "vpc-0c3a448eea08e3312",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-0004559ae83632ff0",
+                    "Location": "eu-west-2c",
+                    "CIDR Block": "172.31.0.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0ecfb526d306ac6e5",
+                    "Location": "eu-west-2a",
+                    "CIDR Block": "172.31.16.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0ccdc88f19fb92856",
+                    "Location": "eu-west-2b",
+                    "CIDR Block": "172.31.32.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-05d2a6fb70b588ae5",
+                    "VPC IDs": "vpc-0c3a448eea08e3312"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "eu-west-1": [
+        {
+            "VPC ID": "vpc-0b7f6e3facb5d1bfa",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-09bc72ae5f88a0cf6",
+                    "Location": "eu-west-1c",
+                    "CIDR Block": "172.31.0.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0925e6c15693dcc44",
+                    "Location": "eu-west-1a",
+                    "CIDR Block": "172.31.16.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0b948b0a1429e3e50",
+                    "Location": "eu-west-1b",
+                    "CIDR Block": "172.31.32.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-0d570bda6dc41b7fc",
+                    "VPC IDs": "vpc-0b7f6e3facb5d1bfa"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "ap-northeast-3": [
+        {
+            "VPC ID": "vpc-0380980715857afd6",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-0fd2bb85ee0e2d41b",
+                    "Location": "ap-northeast-3b",
+                    "CIDR Block": "172.31.16.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-061075def7dcc0d92",
+                    "Location": "ap-northeast-3c",
+                    "CIDR Block": "172.31.0.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-09a88f907d834f71a",
+                    "Location": "ap-northeast-3a",
+                    "CIDR Block": "172.31.32.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-08b07f67c33bb331b",
+                    "VPC IDs": "vpc-0380980715857afd6"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "ap-northeast-2": [
+        {
+            "VPC ID": "vpc-06494a7ab39eed4a8",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-0833ee38b0f13cbd6",
+                    "Location": "ap-northeast-2a",
+                    "CIDR Block": "172.31.0.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0cdce3fe27d6cacb1",
+                    "Location": "ap-northeast-2c",
+                    "CIDR Block": "172.31.32.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0604e6e6be7ba5516",
+                    "Location": "ap-northeast-2d",
+                    "CIDR Block": "172.31.48.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-096c98cd3eb0a957e",
+                    "Location": "ap-northeast-2b",
+                    "CIDR Block": "172.31.16.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-098e5c565dd91240a",
+                    "VPC IDs": "vpc-06494a7ab39eed4a8"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "ap-northeast-1": [
+        {
+            "VPC ID": "vpc-0983713bbee7e3dda",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-0927be044015ac419",
+                    "Location": "ap-northeast-1d",
+                    "CIDR Block": "172.31.16.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0b5a069bdd4234393",
+                    "Location": "ap-northeast-1a",
+                    "CIDR Block": "172.31.32.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0b64dc5ae773496a7",
+                    "Location": "ap-northeast-1c",
+                    "CIDR Block": "172.31.0.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-0b8abd707335976ec",
+                    "VPC IDs": "vpc-0983713bbee7e3dda"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "ca-central-1": [
+        {
+            "VPC ID": "vpc-0d5ed94eb14fab0da",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-022401b40874430db",
+                    "Location": "ca-central-1d",
+                    "CIDR Block": "172.31.32.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-006617b785819bf33",
+                    "Location": "ca-central-1a",
+                    "CIDR Block": "172.31.16.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-06bad62e229e97b6e",
+                    "Location": "ca-central-1b",
+                    "CIDR Block": "172.31.0.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-07097dd3e68388180",
+                    "VPC IDs": "vpc-0d5ed94eb14fab0da"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "sa-east-1": [
+        {
+            "VPC ID": "vpc-0c9fab15323168096",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-04571a6745b6b301d",
+                    "Location": "sa-east-1a",
+                    "CIDR Block": "172.31.0.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-09a95648f2692b3fb",
+                    "Location": "sa-east-1c",
+                    "CIDR Block": "172.31.32.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-02500e488bef4660e",
+                    "Location": "sa-east-1b",
+                    "CIDR Block": "172.31.16.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-0ffaf1c0abf56a653",
+                    "VPC IDs": "vpc-0c9fab15323168096"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "ap-southeast-1": [
+        {
+            "VPC ID": "vpc-0598a5efbdc53b140",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-0c131a8cadce9e534",
+                    "Location": "ap-southeast-1b",
+                    "CIDR Block": "172.31.16.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-05da177948272a2ce",
+                    "Location": "ap-southeast-1a",
+                    "CIDR Block": "172.31.32.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0571237864aa4b9ba",
+                    "Location": "ap-southeast-1c",
+                    "CIDR Block": "172.31.0.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-00e39487949fe68fa",
+                    "VPC IDs": "vpc-0598a5efbdc53b140"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "ap-southeast-2": [
+        {
+            "VPC ID": "vpc-0b84fb4be451943c6",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-02f959400438ccfbf",
+                    "Location": "ap-southeast-2c",
+                    "CIDR Block": "172.31.16.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0779e047a5a449ad8",
+                    "Location": "ap-southeast-2a",
+                    "CIDR Block": "172.31.32.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0fe6fd9c2572d4f19",
+                    "Location": "ap-southeast-2b",
+                    "CIDR Block": "172.31.0.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-035cff814b538ebe9",
+                    "VPC IDs": "vpc-0b84fb4be451943c6"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "eu-central-1": [
+        {
+            "VPC ID": "vpc-0fbd5800f34647e06",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-0230af7d3c5687c03",
+                    "Location": "eu-central-1b",
+                    "CIDR Block": "172.31.32.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-002015699f72dbb4d",
+                    "Location": "eu-central-1a",
+                    "CIDR Block": "172.31.16.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-04d21bde665ab2d6d",
+                    "Location": "eu-central-1c",
+                    "CIDR Block": "172.31.0.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-06324678e3775f170",
+                    "VPC IDs": "vpc-0fbd5800f34647e06"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "ap-southeast-3": [
+        {
+            "VPC ID": "vpc-06122c5f4e73c091b",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-09e6fddff1aeee089",
+                    "Location": "ap-southeast-3a",
+                    "CIDR Block": "172.31.0.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-07fdd78013d6d42b1",
+                    "Location": "ap-southeast-3c",
+                    "CIDR Block": "172.31.16.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0801d73f103e98d3b",
+                    "Location": "ap-southeast-3b",
+                    "CIDR Block": "172.31.32.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-01649b15fce134662",
+                    "VPC IDs": "vpc-06122c5f4e73c091b"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "us-east-1": [
+        {
+            "VPC ID": "vpc-00f17840e22fa7c31",
+            "CIDR Block": "10.0.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-033c1afee462ff308",
+                    "Location": "us-east-1c",
+                    "CIDR Block": "10.0.103.0/24"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-05a5dddb9ecb2a99d",
+                    "VPC IDs": "vpc-09055330287746fa1"
+                },
+                {
+                    "IGW ID": "igw-08e434c9d549a08fb",
+                    "VPC IDs": "vpc-04c1939ea33287ddc"
+                },
+                {
+                    "IGW ID": "igw-0e449e30997c08fdd",
+                    "VPC IDs": "vpc-00f17840e22fa7c31"
+                }
+            ],
+            "NAT Gateways": []
+        },
+        {
+            "VPC ID": "vpc-04c1939ea33287ddc",
+            "CIDR Block": "10.0.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-05e27d9524d1dd641",
+                    "Location": "us-east-1b",
+                    "CIDR Block": "10.0.64.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0631cfc0177707a3b",
+                    "Location": "us-east-1a",
+                    "CIDR Block": "10.0.0.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0a455acf2ba155004",
+                    "Location": "us-east-1a",
+                    "CIDR Block": "10.0.48.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0e45ecdd1a4c074b4",
+                    "Location": "us-east-1b",
+                    "CIDR Block": "10.0.32.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-05a5dddb9ecb2a99d",
+                    "VPC IDs": "vpc-09055330287746fa1"
+                },
+                {
+                    "IGW ID": "igw-08e434c9d549a08fb",
+                    "VPC IDs": "vpc-04c1939ea33287ddc"
+                },
+                {
+                    "IGW ID": "igw-0e449e30997c08fdd",
+                    "VPC IDs": "vpc-00f17840e22fa7c31"
+                }
+            ],
+            "NAT Gateways": []
+        },
+        {
+            "VPC ID": "vpc-09055330287746fa1",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-0680ccdecd104a3a6",
+                    "Location": "us-east-1a",
+                    "CIDR Block": "172.31.0.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0124beec9ea631566",
+                    "Location": "us-east-1e",
+                    "CIDR Block": "172.31.48.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0bbce50aa28a3e1b6",
+                    "Location": "us-east-1d",
+                    "CIDR Block": "172.31.32.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-09c020c83254c86df",
+                    "Location": "us-east-1b",
+                    "CIDR Block": "172.31.80.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0fcdc73bd92ec50da",
+                    "Location": "us-east-1f",
+                    "CIDR Block": "172.31.64.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-056f416c066b7af3d",
+                    "Location": "us-east-1c",
+                    "CIDR Block": "172.31.16.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-05a5dddb9ecb2a99d",
+                    "VPC IDs": "vpc-09055330287746fa1"
+                },
+                {
+                    "IGW ID": "igw-08e434c9d549a08fb",
+                    "VPC IDs": "vpc-04c1939ea33287ddc"
+                },
+                {
+                    "IGW ID": "igw-0e449e30997c08fdd",
+                    "VPC IDs": "vpc-00f17840e22fa7c31"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "us-east-2": [
+        {
+            "VPC ID": "vpc-075e85164c05e8bce",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-087f44ed392fdd9e5",
+                    "Location": "us-east-2c",
+                    "CIDR Block": "172.31.32.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0e1f7ea6bdcac2f09",
+                    "Location": "us-east-2b",
+                    "CIDR Block": "172.31.16.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0f0de2bcdbea66ed8",
+                    "Location": "us-east-2a",
+                    "CIDR Block": "172.31.0.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-04286c0ce2c3237c7",
+                    "VPC IDs": "vpc-075e85164c05e8bce"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "us-west-1": [
+        {
+            "VPC ID": "vpc-0d2892f916f72fc69",
+            "CIDR Block": "10.0.0.0/16",
+            "Subnets": [],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-0d56941817782e3af",
+                    "VPC IDs": "vpc-0b8f691465179ab1c"
+                },
+                {
+                    "IGW ID": "igw-0dbb4fc7848b72e86",
+                    "VPC IDs": "vpc-0d2892f916f72fc69"
+                }
+            ],
+            "NAT Gateways": []
+        },
+        {
+            "VPC ID": "vpc-0b8f691465179ab1c",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-01fbe4cbc957a0e3c",
+                    "Location": "us-west-1b",
+                    "CIDR Block": "172.31.0.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-065d4f05fc5f77e1f",
+                    "Location": "us-west-1c",
+                    "CIDR Block": "172.31.16.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-0d56941817782e3af",
+                    "VPC IDs": "vpc-0b8f691465179ab1c"
+                },
+                {
+                    "IGW ID": "igw-0dbb4fc7848b72e86",
+                    "VPC IDs": "vpc-0d2892f916f72fc69"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ],
+    "us-west-2": [
+        {
+            "VPC ID": "vpc-09ce0b17e8c099bac",
+            "CIDR Block": "172.31.0.0/16",
+            "Subnets": [
+                {
+                    "Subnet ID": "subnet-04b7a65f4f91e8847",
+                    "Location": "us-west-2a",
+                    "CIDR Block": "172.31.16.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0fefd7e4dc28b9b2c",
+                    "Location": "us-west-2c",
+                    "CIDR Block": "172.31.0.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-03ef73503ae5562ba",
+                    "Location": "us-west-2d",
+                    "CIDR Block": "172.31.48.0/20"
+                },
+                {
+                    "Subnet ID": "subnet-0888b30129b08623d",
+                    "Location": "us-west-2b",
+                    "CIDR Block": "172.31.32.0/20"
+                }
+            ],
+            "Internet Gateways": [
+                {
+                    "IGW ID": "igw-045500d231ac98a0f",
+                    "VPC IDs": "vpc-09ce0b17e8c099bac"
+                }
+            ],
+            "NAT Gateways": []
+        }
+    ]
+}

@@ -1,0 +1,218 @@
+[
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-0562b570ba200cbf2",
+        "instance_type": "t2.large",
+        "state": "running",
+        "metric_type": "memory",
+        "average_utilization": 9.63,
+        "last_activity_time": "2024-02-14 08:16:47.894640"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-0562b570ba200cbf2",
+        "instance_type": "t2.large",
+        "state": "running",
+        "metric_type": "cpu",
+        "average_utilization": 2.07,
+        "last_activity_time": "2024-02-14 08:16:47.894640"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-0562b570ba200cbf2",
+        "instance_type": "t2.large",
+        "state": "running",
+        "metric_type": "disk",
+        "average_utilization": 8.02,
+        "last_activity_time": "2024-02-14 08:16:47.894640"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-0b2c3f87367a76756",
+        "instance_type": "t2.large",
+        "state": "running",
+        "metric_type": "cpu",
+        "average_utilization": 0.49,
+        "last_activity_time": "2024-02-14 08:16:51.918036"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-02100f96ae2edcbe1",
+        "instance_type": "t2.medium",
+        "state": "running",
+        "metric_type": "cpu",
+        "average_utilization": 2.2,
+        "last_activity_time": "2024-02-14 08:16:56.246079"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-044ba01ac60510ae4",
+        "instance_type": "t2.medium",
+        "state": "running",
+        "metric_type": "cpu",
+        "average_utilization": 2.93,
+        "last_activity_time": "2024-02-14 08:16:57.860293"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-04a9c36fd53982814",
+        "instance_type": "t2.micro",
+        "state": "running",
+        "metric_type": "cpu",
+        "average_utilization": 0.25,
+        "last_activity_time": "2024-02-14 08:16:59.506974"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-01cbd1d574e996ddd",
+        "instance_type": "t2.medium",
+        "state": "running",
+        "metric_type": "cpu",
+        "average_utilization": 0.18,
+        "last_activity_time": "2024-02-14 08:17:00.905891"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-098fd09f0755d679b",
+        "instance_type": "t2.medium",
+        "state": "running",
+        "metric_type": "cpu",
+        "average_utilization": 2.95,
+        "last_activity_time": "2024-02-14 08:17:03.221295"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-0e89ab23ad60f9467",
+        "instance_type": "t2.micro",
+        "state": "running",
+        "metric_type": "cpu",
+        "average_utilization": 0.15,
+        "last_activity_time": "2024-02-14 08:17:04.823663"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-02c26b9938a129462",
+        "instance_type": "t2.medium",
+        "state": "running",
+        "metric_type": "cpu",
+        "average_utilization": 3.37,
+        "last_activity_time": "2024-02-14 08:17:06.270160"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-0c1719da79f7e64dc",
+        "instance_type": "t2.medium",
+        "state": "running",
+        "metric_type": "cpu",
+        "average_utilization": 0.42,
+        "last_activity_time": "2024-02-14 08:17:07.670056"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-0c150f65174c10dbb",
+        "instance_type": "t2.medium",
+        "state": "running",
+        "metric_type": "cpu",
+        "average_utilization": 2.2,
+        "last_activity_time": "2024-02-14 08:17:10.432734"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-059613b2dc7bba6bb",
+        "instance_type": "t2.large",
+        "state": "running",
+        "metric_type": "cpu",
+        "average_utilization": 0.23,
+        "last_activity_time": "2024-02-14 08:17:11.966199"
+    },
+    {
+        "region": "us-east-1",
+        "instance_id": "i-0bdd38f5e07cbbcb4",
+        "instance_type": "t2.large",
+        "state": "running",
+        "metric_type": "cpu",
+        "average_utilization": 4.34,
+        "last_activity_time": "2024-02-14 08:17:43.657347"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-06be25222d2a95497",
+        "instance_type": "t2.medium",
+        "state": "stopped",
+        "metric_type": "cpu",
+        "average_utilization": 1.68,
+        "last_activity_time": "2023-10-18 06:50:41+00:00"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-086e554e990430bb2",
+        "instance_type": "t2.micro",
+        "state": "stopped",
+        "metric_type": "cpu",
+        "average_utilization": 0.8,
+        "last_activity_time": "2024-01-23 06:08:48+00:00"
+    },
+    {
+        "region": "us-east-1",
+        "instance_id": "i-0c4c5286dc82936e3",
+        "instance_type": "t2.medium",
+        "state": "stopped",
+        "metric_type": "cpu",
+        "average_utilization": 0.35,
+        "last_activity_time": "2024-02-07 04:55:17+00:00"
+    },
+    {
+        "region": "us-east-1",
+        "instance_id": "i-02efcb692cdb15ad7",
+        "instance_type": "t2.medium",
+        "state": "stopped",
+        "metric_type": "cpu",
+        "average_utilization": 11.83,
+        "last_activity_time": "2024-02-09 06:19:24+00:00"
+    },
+    {
+        "region": "us-east-1",
+        "instance_id": "i-03e31b8805dcfad08",
+        "instance_type": "t2.medium",
+        "state": "stopped",
+        "metric_type": "cpu",
+        "average_utilization": 12.31,
+        "last_activity_time": "2024-02-09 08:43:05+00:00"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-0e85c33e586f26229",
+        "instance_type": "t2.micro",
+        "state": "stopped",
+        "metric_type": "cpu",
+        "average_utilization": 0.52,
+        "last_activity_time": "2024-02-11 03:05:17+00:00"
+    },
+    {
+        "region": "us-east-1",
+        "instance_id": "i-017c375e658a17657",
+        "instance_type": "t2.medium",
+        "state": "stopped",
+        "metric_type": "cpu",
+        "average_utilization": 0.77,
+        "last_activity_time": "2024-02-11 16:29:30+00:00"
+    },
+    {
+        "region": "ap-south-1",
+        "instance_id": "i-08ee1f22f81533ea1",
+        "instance_type": "t2.large",
+        "state": "stopped",
+        "metric_type": "cpu",
+        "average_utilization": 0.26,
+        "last_activity_time": "2024-02-13 06:18:22+00:00"
+    },
+    {
+        "region": "us-east-1",
+        "instance_id": "i-062773a78eec5729b",
+        "instance_type": "t2.micro",
+        "state": "stopped",
+        "metric_type": "cpu",
+        "average_utilization": 0.32,
+        "last_activity_time": "2024-02-14 04:18:39+00:00"
+    }
+]

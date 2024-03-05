@@ -1,0 +1,51 @@
+[
+    {
+        "Bucket": "204546626451-us-east-2-cleardatalogs",
+        "Total Storage Size (Bytes)": 982301,
+        "Last Modified Date": "2022-06-19",
+        "Storage Class": "STANDARD",
+        "Object Count": 1000
+    },
+    {
+        "Bucket": "audit-logs-204546626451-us-east-1-3207777",
+        "Total Storage Size (Bytes)": 723057,
+        "Last Modified Date": "2023-08-30",
+        "Storage Class": "STANDARD",
+        "Object Count": 1000
+    },
+    {
+        "Bucket": "audit-logs-204546626451-us-east-2-6594136",
+        "Total Storage Size (Bytes)": 345816,
+        "Last Modified Date": "2023-10-11",
+        "Storage Class": "STANDARD",
+        "Object Count": 1000
+    },
+    {
+        "Bucket": "cf-templates-1rgx57z4fs7wl-us-east-2",
+        "Total Storage Size (Bytes)": 21893,
+        "Last Modified Date": "2022-06-09",
+        "Storage Class": "STANDARD",
+        "Object Count": 5
+    },
+    {
+        "Bucket": "remitone-galen-audio",
+        "Total Storage Size (Bytes)": 1022712161,
+        "Last Modified Date": "2022-09-12",
+        "Storage Class": "STANDARD",
+        "Object Count": 1000
+    },
+    {
+        "Bucket": "remitone-server-dev",
+        "Total Storage Size (Bytes)": 39831010,
+        "Last Modified Date": "2022-07-26",
+        "Storage Class": "STANDARD",
+        "Object Count": 1000
+    },
+    {
+        "Bucket": "remitone-server-storage",
+        "Total Storage Size (Bytes)": 542494065,
+        "Last Modified Date": "2023-08-28",
+        "Storage Class": "STANDARD",
+        "Object Count": 749
+    }
+]
