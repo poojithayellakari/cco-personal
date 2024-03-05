@@ -181,8 +181,11 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True  
 EMAIL_HOST_USER = 'abhishek17rd@gmail.com' 
 EMAIL_HOST_PASSWORD = 'txyv puex sfoi fydl'  
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ORIGINS = [
+CORS_ALLOW_ALL_ORIGINS = True
+
+
+
+CORS_ALLOWED_ORIGINS = [
     "https://example.com",
     "http://localhost:8080",
     "http://localhost:3000",

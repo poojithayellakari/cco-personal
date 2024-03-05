@@ -1,6 +1,7 @@
 
 from django.http import JsonResponse
-from .models import Custom_user
+from .models import CustomUser
+from .serializers import CustomUserSerializer, LoginSerializer
 from rest_framework.views import APIView
 import boto3
 from rest_framework import status
@@ -85,48 +86,69 @@ class AWSConfigure(APIView):
 
             # Return an error response for invalid or missing keys
             return Response({"error": "Invalid or missing access_key and secret_key"}, status=status.HTTP_400_BAD_REQUEST)         
-class Registeruser(APIView):
-    authentication_classes=[JWTAuthentication]
-    permission_classes=[AllowAny]
-    def post(self,request):
-        serializer=UserSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response({'status':403,'errors':serializer.errors})
-        password = make_password(request.data['password'])
-        serializer.validated_data['password'] = password		
-        serializer.save()
-        
-        # user=User.objects.get(username=serializer.data['username'])
-        # token_obj,_=Token.objects.get_or_create(user=user)
-        return Response({'status':200 ,'payload':serializer.data,'message':'succesfully registered'})
-#User
-class LoginView(APIView):
-    authentication_classes=[JWTAuthentication]
-    permission_classes=[AllowAny]
-    def post(self, request):
-        serializer = UserSerializer(data=request.data)
-        serializer.is_valid()
-        username = request.data["username"]
-        password = request.data["password"]
-        validation = User.objects.filter(username=username)
+class RegisterUser(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
 
-        if validation:
-            user = User.objects.get(username=serializer.data['username'])
-            # Check if the provided password matches the hashed password in the database
-            if check_password(password, user.password):
-                refresh = RefreshToken.for_user(user)
-                return Response({
-                    'message':'Successfully logged in',
-                    'access': str(refresh.access_token)
-                })
+    def post(self, request):
+        try:
+            email = request.data.get('email')
+            if CustomUser.objects.filter(email=email).exists():
+                return Response({'error': 'User with this email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            serializer = CustomUserSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            serializer = LoginSerializer(data=request.data)
+            if serializer.is_valid():
+                email = serializer.validated_data['email']
+                password = serializer.validated_data['password']
+
+               
+                user = CustomUser.objects.filter(email=email).first()
+                if user and user.check_password(password):
+                    
+                    refresh = RefreshToken.for_user(user)
+                    
+                    
+                    return JsonResponse({'email': email, 'access_token': str(refresh.access_token)}, status=status.HTTP_200_OK)
+                else:
+                    return JsonResponse({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
             else:
-                return Response({"message": "Invalid email or password"}, status.HTTP_403_FORBIDDEN)
-        else:
-            return Response({"message": "Invalid email or password"}, status.HTTP_403_FORBIDDEN)
-    def get(self,request):
-        users=User.objects.all()
-        user_serializer=UserSerializer(users,many=True)
-        return Response(user_serializer.data)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class UserListView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+    def get(self, request):
+        users = CustomUser.objects.all()
+        serializer = CustomUserSerializer(users, many=True)
+        return JsonResponse(serializer.data)
+
+class UserDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+    def delete(self, request, email):
+        try:
+            user = CustomUser.objects.get(email=email)
+            user.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except CustomUser.DoesNotExist:
+            return JsonResponse({'error': 'User with this email does not exist'}, status=status.HTTP_404_NOT_FOUND)
+
 
 class CustomJSONEncoder(JSONEncoder):
     def default(self, obj):

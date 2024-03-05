@@ -1,13 +1,19 @@
 from rest_framework import serializers
-from django.core import validators
-from django.core import validators
-from django.core.validators import RegexValidator
-from django.contrib.auth.models import User
-from .models import Custom_user
+from .models import CustomUser
 
 
-class UserSerializer(serializers.ModelSerializer):
-    # email=serializers.CharField(max_length=200,validators=[validators.EmailValidator(message="Invalid username")])
+class CustomUserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, style={'input_type': 'password'})
+
     class Meta:
-        model=User
-        fields=('username','password')
+        model = CustomUser
+        fields = ['id', 'full_name', 'email', 'password']
+        read_only_fields = ['id']
+
+    def create(self, validated_data):
+        return CustomUser.objects.create_user(**validated_data)
+
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(style={'input_type': 'password'})

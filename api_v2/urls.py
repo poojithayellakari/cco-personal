@@ -1,8 +1,10 @@
 from django.urls import path
 from . import views
 urlpatterns = [
-    path('api/register/',views.Registeruser.as_view()),
+    path('api/register/',views.RegisterUser.as_view()),
     path("aws_configure/", views.AWSConfigure.as_view(),name='configuration'),
+    path('api/get_users/', views.UserListView.as_view(), name='user-list'),
+    path('api/delete_user/<str:email>/', views.UserDeleteView.as_view(), name='user-delete'),
     #path("aws/configure/signout/",views.SignOutView.as_view(),name='aws-configure-signout'),
     path('api/login/', views.LoginView.as_view(),name='login'),
     path('api/ec2_memory_data/',views.EC2_Memory_utilization.as_view(),name='ec2_memory_data'),#1 time limit
