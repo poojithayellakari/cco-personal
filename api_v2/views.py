@@ -3152,7 +3152,7 @@ class AWSResourceManager(APIView):
             self.get_unused_ecs_clusters(start_time)
             self.get_rds_databases(start_time)
             self.get_unused_s3_buckets(start_time)
-            self.get_unused_secrets(start_time)
+            #self.get_unused_secrets(start_time)
             self.get_unused_waf_webacls(start_time)
 
             sum_overall_count = sum(overall_unused_data_count)
@@ -3188,9 +3188,12 @@ class AWSResourceManager(APIView):
                 'last_activity_time': function['last_activity_time']
             }
             for function in all_functions
-            if function['last_activity_time'] and function['last_activity_time'] >= (
-                self.utc_now - timedelta(start_time)).replace(tzinfo=timezone.utc)
+            if function['last_activity_time'] and function['last_activity_time'] > (
+                self.utc_now - timedelta(days=start_time)).replace(tzinfo=timezone.utc)
+                
         ]
+        test=(self.utc_now - timedelta(days=start_time)).replace(tzinfo=timezone.utc)
+        print(test)
 
         unused_functions.sort(key=lambda x: (x['last_activity_time'] is None, x['last_activity_time']))
 
@@ -3260,7 +3263,7 @@ class AWSResourceManager(APIView):
 
                     # Accumulate the price for unused instances
                     if state == 'stopped' and last_activity_time and \
-                            last_activity_time >= (self.utc_now - timedelta(start_time)).replace(tzinfo=timezone.utc) and \
+                            last_activity_time > (self.utc_now - timedelta(days=start_time)).replace(tzinfo=timezone.utc) and \
                             instance_type in instance_prices:
                         total_price += price
 
@@ -3274,7 +3277,7 @@ class AWSResourceManager(APIView):
             }
             for instance in all_instances
             if instance['state'] == 'stopped' and instance['last_activity_time'] and
-            instance['last_activity_time'] >= (self.utc_now - timedelta(start_time)).replace(tzinfo=timezone.utc) and
+            instance['last_activity_time'] > (self.utc_now - timedelta(days=start_time)).replace(tzinfo=timezone.utc) and
             instance['instance_type'] in instance_prices
         ]
 
@@ -3331,8 +3334,8 @@ class AWSResourceManager(APIView):
     def get_unused_ecs_clusters(self, start_time):
         unused_clusters_by_region = {}
 
-        regions = [region['RegionName'] for region in self.ec2_client.describe_regions()['Regions']]
-
+        regions = [region['RegionName'] for region in self.ec2_client.describe_regions()['Regions']
+                   if region['RegionName'] not in ['cn-north-1', 'cn-northwest-1']]
         for region in regions:
             current_ecs_client = self.session.client('ecs', region_name=region)
 
@@ -3347,7 +3350,7 @@ class AWSResourceManager(APIView):
                 if 'lastStatus' in cluster_info:
                     last_status_time = cluster_info['lastStatus'].get('updatedAt', cluster_info['createdAt'])
                     last_activity_time = datetime.strptime(last_status_time, "%Y-%m-%dT%H:%M:%S.%f%z")
-                    if datetime.now() - last_activity_time > timedelta(start_time):
+                    if datetime.now() - last_activity_time > timedelta(days=start_time):
                         unused_clusters.append({
                             'cluster_name': cluster_name,
                             'last_activity_time': last_activity_time.strftime("%Y-%m-%d %H:%M:%S %Z")
@@ -3368,7 +3371,8 @@ class AWSResourceManager(APIView):
 
 
     def get_rds_databases(self, start_time):
-        regions = [region['RegionName'] for region in self.rds_client.describe_db_instances()['DBInstances']]
+        regions = [region['RegionName'] for region in self.ec2_client.describe_regions()['Regions']
+                   if region['RegionName'] not in ['cn-north-1', 'cn-northwest-1']]
         all_databases = []
 
         for region_name in regions:
@@ -3395,7 +3399,7 @@ class AWSResourceManager(APIView):
 
         unused_databases = [db for db in all_databases
                             if db['db_instance_status'] == 'stopped' and db['last_activity_time'] and
-                            db['last_activity_time'] >= (datetime.utcnow() - timedelta(start_time)).replace(tzinfo=timezone.utc)]
+                            db['last_activity_time'] > (datetime.utcnow() - timedelta(days=start_time)).replace(tzinfo=timezone.utc)]
 
         unused_databases.sort(key=lambda x: (x['last_activity_time'] is None, x['last_activity_time']))
 
@@ -3419,29 +3423,19 @@ class AWSResourceManager(APIView):
         unused_buckets = []
 
         for bucket in buckets['Buckets']:
-            bucket_name = bucket['Name']
+            if self.is_bucket_empty(bucket['Name']):
 
-            last_modified = self.s3_client.list_objects_v2(Bucket=bucket_name).get('Contents', [])
-
-            if last_modified:
-                last_modified_time = max(item['LastModified'].replace(tzinfo=timezone.utc) for item in last_modified)
-
-                if datetime.utcnow().replace(tzinfo=timezone.utc) - last_modified_time > timedelta(start_time):
                     unused_buckets.append({
-                        'bucket_name': bucket_name,
-                        'last_modified_time': last_modified_time.strftime("%Y-%m-%d %H:%M:%S %Z") if last_modified_time else None
+                        'bucket_name':bucket['Name'],
+                        
                     })
-            else:
-                unused_buckets.append({
-                    'bucket_name': bucket_name,
-                    'last_modified_time': None
-                })
 
         unused_data = {
             "unused_buckets": unused_buckets,
             "total_buckets": total_buckets,
             "unused_buckets_count": len(unused_buckets)
         }
+
         overall_unused_data.append(unused_data)
         overall_unused_data_count.append(len(unused_buckets))
 
@@ -3487,7 +3481,8 @@ class AWSResourceManager(APIView):
             return None
 
     def get_unused_waf_webacls(self, start_time):
-        regions = [region['RegionName'] for region in self.ec2_client.describe_regions()['Regions']]
+        regions = [region['RegionName'] for region in self.ec2_client.describe_regions()['Regions']
+                   if region['RegionName'] not in ['cn-north-1', 'cn-northwest-1']]
 
         unused_wafs_by_region = {}
 
@@ -5359,3 +5354,589 @@ class AwsServiceCost(APIView):
             return response
         except Exception as e:
             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+
+overall_unused_data = []
+overall_unused_data_count=[]
+ec2_compute_unit=[]
+class AWS_Unused_Resource_and_EC2_Compute(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        access_key = settings.AWS_ACCESS_KEY_ID
+        secret_key = settings.AWS_SECRET_ACCESS_KEY
+
+        # Check if AWS credentials are configured
+        if not access_key or not secret_key:
+            raise ValueError('AWS credentials are not configured')
+
+        # Configure the AWS client with the stored credentials
+        self.session = boto3.Session(
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+        )
+
+        self.lambda_client = self.session.client('lambda')
+        self.ec2_client = self.session.client('ec2')
+        self.ecr_client = self.session.client('ecr')
+        self.ecs_client = self.session.client('ecs')
+        self.rds_client = self.session.client('rds')
+        self.s3_client = self.session.client('s3')
+        self.secrets_manager_client = self.session.client('secretsmanager')
+        self.wafv2_client = self.session.client('wafv2')
+        self.cloudwatch_logs_client = self.session.client('logs')
+        self.utc_now = datetime.utcnow().replace(tzinfo=timezone.utc)
+
+    def get(self, request):
+        try:
+            end_time = datetime.utcnow()
+            time_range = request.GET.get('time-range')
+
+            # Calculate start time based on the time range provided by the user
+            if time_range == "1 Week":
+                start_time = 7  # 1 week in days
+            elif time_range == "15 Days":
+                start_time = 15
+            
+            elif time_range == "1 Month":
+                start_time = 30  # 1 month in days
+            
+            elif time_range == "3 Months":
+                start_time = 90  # 3 months in days
+            elif time_range == "6 Months":
+                start_time = 180  # 6 months in days
+            else:
+                raise ValueError('Invalid time range')
+            
+
+            self.get_lambda_functions(start_time)
+            self.get_ec2_instances(start_time)
+            self.get_ecr_repositories(start_time)
+            self.get_unused_ecs_clusters(start_time)
+            self.get_rds_databases(start_time)
+            self.get_unused_s3_buckets(start_time)
+            #self.get_unused_secrets(start_time)
+            self.get_unused_waf_webacls(start_time)
+            self.get_ec2_less_50(start_time)
+
+            sum_overall_count = sum(overall_unused_data_count)
+            json_response = json.dumps({"unused_data": overall_unused_data, "unused_data_count": sum_overall_count,"ec2_compute_unit":ec2_compute_unit},
+                                       default=str)
+            response = HttpResponse(json_response, content_type='application/json')
+            overall_unused_data.clear()
+            overall_unused_data_count.clear()
+            return response
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {e}"}, content_type='application/json', status=500)
+
+    def get_lambda_functions(self, start_time):
+        response = self.lambda_client.list_functions()
+        functions = response['Functions']
+
+        all_functions = []
+
+        for function in functions:
+            function_name = function['FunctionName']
+            last_modified_time_str = function['LastModified']
+            last_activity_time = datetime.strptime(last_modified_time_str, '%Y-%m-%dT%H:%M:%S.%f%z')
+            
+            # Append data as a dictionary
+            all_functions.append({
+                'function_name': function_name,
+                'last_activity_time': last_activity_time
+            })
+
+        unused_functions = [
+            {
+                'function_name': function['function_name'],
+                'last_activity_time': function['last_activity_time']
+            }
+            for function in all_functions
+            if function['last_activity_time'] and function['last_activity_time'] > (
+                self.utc_now - timedelta(days=start_time)).replace(tzinfo=timezone.utc)
+                
+        ]
+        test=(self.utc_now - timedelta(days=start_time)).replace(tzinfo=timezone.utc)
+        print(test)
+
+        unused_functions.sort(key=lambda x: (x['last_activity_time'] is None, x['last_activity_time']))
+
+        total_functions = len(all_functions)
+        total_unused_functions = len(unused_functions)
+
+        unused_data = {
+            "all_functions": all_functions,
+            "unused_functions": unused_functions,
+            "total_functions": total_functions,
+            "total_unused_functions": total_unused_functions
+        }
+        overall_unused_data.append(unused_data)
+        overall_unused_data_count.append(total_unused_functions)
+
+
+    def get_ec2_instances(self, start_time):
+        regions = [region['RegionName'] for region in self.ec2_client.describe_regions()['Regions']
+                   if region['RegionName'] not in ['cn-north-1', 'cn-northwest-1']]
+
+        all_instances = []
+        instance_prices = {}
+        with open('ec2_instance_prices.csv', newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                instance_type = row['Instance Type']
+                instance_prices[instance_type] = {
+                    'Instance Type': row['Instance Type'],
+                    'Market': row['Market'],
+                    'vCPU': row['vCPU'],
+                    'RAM (GiB)': row['RAM (GiB)'],
+                    'Price ($/m)': float(row['Price ($/m)'])  # Convert price to float
+                }
+
+        total_price = 0  # Initialize total price
+
+        for region_name in regions:
+            ec2_client = self.session.client('ec2', region_name=region_name)
+
+            response = ec2_client.describe_instances()
+
+            for reservation in response['Reservations']:
+                for instance in reservation['Instances']:
+                    instance_id = instance['InstanceId']
+                    state = instance['State']['Name']
+                    launch_time = instance['LaunchTime']
+
+                    if state == 'running':
+                        last_activity_time = self.utc_now
+                    elif state == 'stopped':
+                        last_activity_time = launch_time.replace(tzinfo=timezone.utc)
+                    else:
+                        last_activity_time = None
+
+                    instance_type = instance['InstanceType']
+                    instance_info = instance_prices.get(instance_type, {})
+                    price = instance_info.get('Price ($/m)')
+
+                    # Append data as a dictionary
+                    all_instances.append({
+                        'instance_id': instance_id,
+                        'state': state,
+                        'last_activity_time': last_activity_time,
+                        'instance_type': instance_info.get('Instance Type'),
+                        'price (USD/month)': price 
+                    })
+
+                    # Accumulate the price for unused instances
+                    if state == 'stopped' and last_activity_time and \
+                            last_activity_time > (self.utc_now - timedelta(days=start_time)).replace(tzinfo=timezone.utc) and \
+                            instance_type in instance_prices:
+                        total_price += price
+
+        unused_instances = [
+            {
+                'instance_id': instance['instance_id'],
+                'state': instance['state'],
+                'last_activity_time': instance['last_activity_time'],
+                'instance_type': instance['instance_type'],
+                'price (USD/month)': instance['price (USD/month)']
+            }
+            for instance in all_instances
+            if instance['state'] == 'stopped' and instance['last_activity_time'] and
+            instance['last_activity_time'] > (self.utc_now - timedelta(days=start_time)).replace(tzinfo=timezone.utc) and
+            instance['instance_type'] in instance_prices
+        ]
+
+        unused_instances.sort(key=lambda x: (x['last_activity_time'] is None, x['last_activity_time']))
+
+        total_ec2_instances = len(all_instances)
+        total_unused_instances = len(unused_instances)
+
+        unused_data = {
+            "all_instances": all_instances,
+            "unused_instances": unused_instances,
+            "total_ec2_instances": total_ec2_instances,
+            "total_unused_instances": total_unused_instances,
+            "total_price (USD/month)": round(total_price,2)   # Add total price to the result
+        }
+        overall_unused_data.append(unused_data)
+        overall_unused_data_count.append(total_unused_instances)
+
+    def get_ecr_repositories(self, start_time):
+        response = self.ecr_client.describe_repositories()
+
+        all_repositories = []
+        unused_repositories = []
+
+        for repository in response.get('repositories', []):
+            repository_name = repository['repositoryName']
+            image_count = repository.get('imageCount', 0)
+
+            # Append data as a dictionary to all_repositories
+            all_repositories.append({
+                'repository_name': repository_name,
+                'image_count': image_count
+            })
+
+            # Filter repositories with no images and append as a dictionary to unused_repositories
+            if image_count == 0:
+                unused_repositories.append({
+                    'repository_name': repository_name,
+                    'image_count': image_count
+                })
+
+        total_repositories = len(all_repositories)
+        total_unused_repositories = len(unused_repositories)
+
+        unused_data = {
+            "all_repositories": all_repositories,
+            "unused_repositories": unused_repositories,
+            "total_repositories": total_repositories,
+            "total_unused_repositories": total_unused_repositories
+        }
+        overall_unused_data.append(unused_data)
+        overall_unused_data_count.append(total_unused_repositories)
+
+    def get_unused_ecs_clusters(self, start_time):
+        unused_clusters_by_region = {}
+
+        regions = [region['RegionName'] for region in self.ec2_client.describe_regions()['Regions']
+                   if region['RegionName'] not in ['cn-north-1', 'cn-northwest-1']]
+        for region in regions:
+            current_ecs_client = self.session.client('ecs', region_name=region)
+
+            clusters = current_ecs_client.list_clusters()['clusterArns']
+
+            unused_clusters = []
+
+            for cluster_arn in clusters:
+                cluster_name = cluster_arn.split("/")[-1]
+                cluster_info = current_ecs_client.describe_clusters(clusters=[cluster_name])['clusters'][0]
+
+                if 'lastStatus' in cluster_info:
+                    last_status_time = cluster_info['lastStatus'].get('updatedAt', cluster_info['createdAt'])
+                    last_activity_time = datetime.strptime(last_status_time, "%Y-%m-%dT%H:%M:%S.%f%z")
+                    if datetime.now() - last_activity_time > timedelta(days=start_time):
+                        unused_clusters.append({
+                            'cluster_name': cluster_name,
+                            'last_activity_time': last_activity_time.strftime("%Y-%m-%d %H:%M:%S %Z")
+                        })
+
+            if unused_clusters:
+                unused_clusters_by_region[region] = unused_clusters
+
+        if unused_clusters_by_region:
+            total_clusters = sum(len(clusters) for clusters in unused_clusters_by_region.values())
+
+            unused_data = {
+                "unused_clusters_by_region": unused_clusters_by_region,
+                "total_clusters": total_clusters
+            }
+            overall_unused_data.append(unused_data)
+            overall_unused_data_count.append(total_clusters)
+
+
+    def get_rds_databases(self, start_time):
+        regions = [region['RegionName'] for region in self.ec2_client.describe_regions()['Regions']
+                   if region['RegionName'] not in ['cn-north-1', 'cn-northwest-1']]
+        all_databases = []
+
+        for region_name in regions:
+            rds_client = self.session.client('rds', region_name=region_name)
+            response = rds_client.describe_db_instances()
+
+            for db_instance in response['DBInstances']:
+                db_instance_id = db_instance['DBInstanceIdentifier']
+                db_instance_status = db_instance['DBInstanceStatus']
+                instance_create_time = db_instance['InstanceCreateTime']
+
+                if db_instance_status == 'available':
+                    last_activity_time = self.utc_now
+                elif db_instance_status == 'stopped':
+                    last_activity_time = instance_create_time.replace(tzinfo=timezone.utc)
+                else:
+                    last_activity_time = None
+
+                all_databases.append({
+                    'db_instance_id': db_instance_id,
+                    'db_instance_status': db_instance_status,
+                    'last_activity_time': last_activity_time.strftime("%Y-%m-%d %H:%M:%S %Z") if last_activity_time else None
+                })
+
+        unused_databases = [db for db in all_databases
+                            if db['db_instance_status'] == 'stopped' and db['last_activity_time'] and
+                            db['last_activity_time'] > (datetime.utcnow() - timedelta(days=start_time)).replace(tzinfo=timezone.utc)]
+
+        unused_databases.sort(key=lambda x: (x['last_activity_time'] is None, x['last_activity_time']))
+
+        total_rds_databases = len(all_databases)
+        total_unused_databases = len(unused_databases)
+
+        unused_data = {
+            "all_databases": all_databases,
+            "unused_databases": unused_databases,
+            "total_rds_databases": total_rds_databases,
+            "total_unused_databases": total_unused_databases
+        }
+        overall_unused_data.append(unused_data)
+        overall_unused_data_count.append(total_unused_databases)
+
+    def is_bucket_empty(self,bucket_name):
+        # Create an S3 client
+        
+
+        # List the objects in the bucket
+        objects = self.s3_client.list_objects_v2(Bucket=bucket_name)
+
+        # Check if the bucket is empty
+        return 'Contents' not in objects
+    def get_unused_s3_buckets(self,start_time):
+        buckets = self.s3_client.list_buckets()
+
+        total_buckets = len(buckets['Buckets'])
+
+        unused_buckets = []
+
+        for bucket in buckets['Buckets']:
+            if self.is_bucket_empty(bucket['Name']):
+
+                    unused_buckets.append({
+                        'bucket_name':bucket['Name'],
+                        
+                    })
+
+        unused_data = {
+            "unused_buckets": unused_buckets,
+            "total_buckets": total_buckets,
+            "unused_buckets_count": len(unused_buckets)
+        }
+
+        overall_unused_data.append(unused_data)
+        overall_unused_data_count.append(len(unused_buckets))
+
+    def get_last_modified_time(self, bucket_name):
+        objects = self.s3_client.list_objects_v2(Bucket=bucket_name).get('Contents', [])
+        
+        if objects:
+            last_modified_time = max(item['LastModified'].replace(tzinfo=timezone.utc) for item in objects)
+            return last_modified_time
+
+        return None
+
+    def get_unused_secrets(self, start_time):
+        secrets_response = self.secrets_manager_client.list_secrets()
+
+        all_secrets = []
+
+        for secret in secrets_response['SecretList']:
+            secret_name = secret['Name']
+            log_group_name = f'/aws/secretsmanager/{secret_name}'
+
+            log_events = self.cloudwatch_logs_client.describe_log_streams(logGroupName=log_group_name)['logStreams']
+
+            last_log_event_time = self.get_last_log_event_time(log_events)
+            all_secrets.append({
+                'secret_name': secret_name,
+                'last_log_event_time': last_log_event_time.strftime("%Y-%m-%d %H:%M:%S %Z") if last_log_event_time else None
+            })
+
+        unused_secrets = [secret for secret in all_secrets
+                        if secret['last_log_event_time'] and secret['last_log_event_time'] >= (
+                                datetime.utcnow() - timedelta(start_time)).replace(tzinfo=timezone.utc)]
+
+        unused_secrets.sort(key=lambda x: (x['last_log_event_time'] is None, x['last_log_event_time']))
+
+        total_secrets = len(all_secrets)
+        total_unused_secrets = len(unused_secrets)
+
+        unused_data = {
+            "all_secrets": all_secrets,
+            "unused_secrets": unused_secrets,
+            "total_secrets": total_secrets,
+            "total_unused_secrets": total_unused_secrets
+        }
+        overall_unused_data.append(unused_data)
+        overall_unused_data_count.append(total_unused_secrets)
+
+    def get_last_log_event_time(self, log_events):
+        if log_events:
+            return log_events[0]['timestamp']
+        else:
+            return None
+
+    def get_unused_waf_webacls(self, start_time):
+        regions = [region['RegionName'] for region in self.ec2_client.describe_regions()['Regions']
+                   if region['RegionName'] not in ['cn-north-1', 'cn-northwest-1']]
+
+        unused_wafs_by_region = {}
+
+        for region in regions:
+            current_wafv2_client = self.session.client('wafv2', region_name=region)
+
+            webacls = current_wafv2_client.list_web_acls(Scope='REGIONAL')['WebACLs']
+
+            unused_wafs = []
+
+            for webacl in webacls:
+                webacl_id = webacl['Id']
+                webacl_info = current_wafv2_client.get_web_acl(Name=webacl_id)['WebACL']
+
+                if 'LastMigrated' in webacl_info:
+                    last_modified_time = datetime.utcfromtimestamp(webacl_info['LastMigrated'])
+                    if self.utc_now - last_modified_time > timedelta(days=start_time):
+                        unused_wafs.append({
+                            'webacl_id': webacl_id,
+                            'last_modified_time': last_modified_time.strftime("%Y-%m-%d %H:%M:%S %Z")
+                        })
+
+            if unused_wafs:
+                unused_wafs_by_region[region] = unused_wafs
+
+        if unused_wafs_by_region:
+            total_wafs = sum(len(wafs) for wafs in unused_wafs_by_region.values())
+
+            waf_unused_data = {
+                "unused_wafs_by_region": unused_wafs_by_region,
+                "total_wafs": total_wafs
+            }
+            overall_unused_data.append(waf_unused_data)
+            overall_unused_data_count.append(len(unused_wafs))
+    def get_last_activity_time(self, instance_state, launch_time):
+        if instance_state == 'running':
+            return datetime.utcnow()
+        elif instance_state == 'stopped':
+            return launch_time
+        else:
+            return None
+
+    def get_ec2_less_50(self, start_time):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+            )
+            all_utilization_info = []
+
+            regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
+
+            count = 0  # Initialize count
+
+            for region_name in regions:
+                ec2_client = session.client('ec2', region_name=region_name)
+
+                response = ec2_client.describe_instances()
+
+                for reservation in response['Reservations']:
+                    for instance in reservation['Instances']:
+                        instance_id = instance['InstanceId']
+                        instance_type = instance['InstanceType']
+                        state = instance['State']['Name']
+                        launch_time = instance['LaunchTime']
+
+                        last_activity_time = self.get_last_activity_time(state, launch_time)
+
+                        cloudwatch_client = session.client('cloudwatch', region_name=region_name)
+
+                        end_time = datetime.utcnow()
+                        # time_range=request.GET.get('time-range')
+                        #                 # Calculate start time based on the time range provided by the user
+                        # if time_range == "1 Week":
+                        #     start_time = end_time - timedelta(weeks=1)
+                        # elif time_range == "15 Days":
+                        #     start_time = end_time - timedelta(days=15)
+                        
+                        # elif time_range == "1 Month":
+                        #     start_time = end_time - timedelta(weeks=4 * 1)
+                        
+                        # elif time_range == "3 Months":
+                        #     start_time = end_time - timedelta(weeks=4 * 3)
+                        # elif time_range == "6 Months":
+                        #     start_time = end_time - timedelta(weeks=4 * 6)
+
+                        response = cloudwatch_client.get_metric_data(
+                            MetricDataQueries=[
+                                {
+                                    'Id': 'mem_utilization',
+                                    'MetricStat': {
+                                        'Metric': {
+                                            'Namespace': 'CWAgent',
+                                            'MetricName': 'mem_used_percent',
+                                            'Dimensions': [
+                                                {
+                                                    'Name': 'InstanceId',
+                                                    'Value': instance_id
+                                                },
+                                            ]
+                                        },
+                                        'Period': 3600,
+                                        'Stat': 'Average',
+                                    },
+                                    'ReturnData': True,
+                                },
+                            ],
+                            StartTime=start_time,
+                            EndTime=end_time,
+                        )
+
+                        cpu_response = cloudwatch_client.get_metric_data(
+                            MetricDataQueries=[
+                                {
+                                    'Id': 'cpu_utilization',
+                                    'MetricStat': {
+                                        'Metric': {
+                                            'Namespace': 'AWS/EC2',
+                                            'MetricName': 'CPUUtilization',
+                                            'Dimensions': [
+                                                {
+                                                    'Name': 'InstanceId',
+                                                    'Value': instance_id
+                                                },
+                                            ]
+                                        },
+                                        'Period': 3600,
+                                        'Stat': 'Average',
+                                    },
+                                    'ReturnData': True,
+                                },
+                            ],
+                            StartTime=start_time,
+                            EndTime=end_time,
+                        )
+
+                        if 'MetricDataResults' in response and 'MetricDataResults' in cpu_response:
+                            for mem_metric_result, cpu_metric_result in zip(response['MetricDataResults'], cpu_response['MetricDataResults']):
+                                if 'Values' in mem_metric_result and 'Values' in cpu_metric_result:
+                                    mem_utilization_info = mem_metric_result['Values']
+                                    cpu_utilization_info = cpu_metric_result['Values']
+
+                                    if mem_utilization_info and cpu_utilization_info:
+                                        mem_average_value = round(sum(mem_utilization_info) / len(mem_utilization_info), 2)
+                                        cpu_average_value = round(sum(cpu_utilization_info) / len(cpu_utilization_info), 2)
+
+                                        if 0 < mem_average_value <= 50 and 0 < cpu_average_value <= 50:
+                                            count += 1
+
+                                        all_utilization_info.append({
+                                            'region': region_name,
+                                            'instance_id': instance_id,
+                                            'instance_type': instance_type,
+                                            'state': state,
+                                            'memory_average_utilization': mem_average_value,
+                                            'cpu_average_utilization': cpu_average_value,
+                                            'last_activity_time': last_activity_time,
+                                        })
+
+            print(f"Count of instances with memory and CPU utilization between 0% and 50%: {count}")
+
+            ec2_compute_unit_less_50=({'utilization_info': all_utilization_info,
+                                 'ec2_compute_count_less_than_50%':count})
+            ec2_compute_unit.append(ec2_compute_unit_less_50)
+            
+        except Exception as e:
+            # Handle exceptions appropriately
+            return JsonResponse({'error': str(e)}, status=500)

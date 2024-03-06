@@ -43,6 +43,7 @@ urlpatterns = [
     #Unused resources
     path('api/unused_resource_data/',views.AWSResourceManager.as_view(),name="unused_resource"),
     path('api/unused_resources/',views.AWS_Unused_Resources.as_view(),name='unused_resource_data'),
+    path('api/ec2_compute_unused_resource/',views.AWS_Unused_Resource_and_EC2_Compute.as_view(),name='ec2-compute-and-unsued-resource'),
 
     #Recommendations
     path('api/ec2_recc/',views.EC2_Recommendations.as_view(),name='ec2-recomendations'),
