@@ -96,7 +96,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'aws_cost_DB',
         'USER': 'postgres',
-        'PASSWORD': '556677',
+        'PASSWORD': 'Password@123',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -183,6 +183,7 @@ EMAIL_HOST_USER = 'abhishek17rd@gmail.com'
 EMAIL_HOST_PASSWORD = 'txyv puex sfoi fydl'  
 CORS_ALLOW_ALL_ORIGINS = True
 
+AUTH_USER_MODEL = 'api_v2.CustomUser'
 
 
 CORS_ALLOWED_ORIGINS = [

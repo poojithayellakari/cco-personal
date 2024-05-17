@@ -1,0 +1,86 @@
+Date,Service,Region,Amount,Unit
+Mar-24,AWS CloudTrail,ap-northeast-1,0.0,USD
+Mar-24,AWS CloudTrail,ap-northeast-2,0.0,USD
+Mar-24,AWS CloudTrail,ap-northeast-3,0.0,USD
+Mar-24,AWS CloudTrail,ap-south-1,0.0,USD
+Mar-24,AWS CloudTrail,ap-southeast-1,0.0,USD
+Mar-24,AWS CloudTrail,ap-southeast-2,0.0,USD
+Mar-24,AWS CloudTrail,ap-southeast-3,0.0,USD
+Mar-24,AWS CloudTrail,ca-central-1,0.0,USD
+Mar-24,AWS CloudTrail,eu-central-1,0.0,USD
+Mar-24,AWS CloudTrail,eu-north-1,0.0,USD
+Mar-24,AWS CloudTrail,eu-west-1,0.0,USD
+Mar-24,AWS CloudTrail,eu-west-2,0.0,USD
+Mar-24,AWS CloudTrail,eu-west-3,0.0,USD
+Mar-24,AWS CloudTrail,sa-east-1,0.0,USD
+Mar-24,AWS CloudTrail,us-east-1,0.0,USD
+Mar-24,AWS CloudTrail,us-east-2,0.0,USD
+Mar-24,AWS CloudTrail,us-west-1,0.0,USD
+Mar-24,AWS CloudTrail,us-west-2,0.0,USD
+Mar-24,AWS Config,ap-south-1,0.0,USD
+Mar-24,AWS Cost Explorer,us-east-1,0.0,USD
+Mar-24,AWS Data Transfer,ap-south-1,-0.0058784633,USD
+Mar-24,AWS Data Transfer,eu-west-2,-0.0002577998,USD
+Mar-24,AWS Data Transfer,us-east-1,-0.0028361744,USD
+Mar-24,AWS Data Transfer,us-east-2,-2.495e-07,USD
+Mar-24,AWS Database Migration Service,ap-south-1,0.0,USD
+Mar-24,AWS Glue,ap-northeast-1,0.0,USD
+Mar-24,AWS Glue,ap-northeast-2,0.0,USD
+Mar-24,AWS Glue,eu-central-1,0.0,USD
+Mar-24,AWS Glue,eu-west-3,0.0,USD
+Mar-24,AWS Glue,sa-east-1,0.0,USD
+Mar-24,AWS Glue,us-east-1,0.0,USD
+Mar-24,AWS Key Management Service,ap-northeast-1,0.0,USD
+Mar-24,AWS Key Management Service,ap-south-1,3e-08,USD
+Mar-24,AWS Key Management Service,eu-north-1,0.0,USD
+Mar-24,AWS Migration Hub Refactor Spaces,ap-northeast-1,0.0,USD
+Mar-24,AWS Migration Hub Refactor Spaces,ap-southeast-1,0.0,USD
+Mar-24,AWS Migration Hub Refactor Spaces,eu-central-1,0.0,USD
+Mar-24,AWS Migration Hub Refactor Spaces,eu-north-1,0.0,USD
+Mar-24,AWS Migration Hub Refactor Spaces,eu-west-2,0.0,USD
+Mar-24,AWS Migration Hub Refactor Spaces,eu-west-3,0.0,USD
+Mar-24,AWS Migration Hub Refactor Spaces,sa-east-1,0.0,USD
+Mar-24,AWS Migration Hub Refactor Spaces,us-east-1,0.0,USD
+Mar-24,AWS Secrets Manager,ap-northeast-2,0.0,USD
+Mar-24,AWS Secrets Manager,ap-south-1,-2.4e-08,USD
+Mar-24,AWS Secrets Manager,eu-west-1,0.0,USD
+Mar-24,AWS Secrets Manager,us-east-1,-1.2e-08,USD
+Mar-24,AWS Secrets Manager,us-east-2,0.0,USD
+Mar-24,AWS WAF,global,-3.6e-07,USD
+Mar-24,Amazon DocumentDB (with MongoDB compatibility),us-east-1,-1.1e-09,USD
+Mar-24,Amazon DynamoDB,us-east-2,0.0,USD
+Mar-24,Amazon EC2 Container Registry (ECR),ap-south-1,4.5e-09,USD
+Mar-24,Amazon EC2 Container Registry (ECR),us-east-1,1.8e-09,USD
+Mar-24,Amazon EC2 Container Registry (ECR),us-east-2,-1.6e-09,USD
+Mar-24,EC2 - Other,ap-south-1,0.0058251382,USD
+Mar-24,EC2 - Other,us-east-1,0.0028168326,USD
+Mar-24,Amazon Elastic Compute Cloud - Compute,ap-south-1,2.64399e-05,USD
+Mar-24,Amazon Elastic Compute Cloud - Compute,us-east-1,0.0,USD
+Mar-24,Amazon Elastic Container Service,us-east-1,8.1905e-06,USD
+Mar-24,Amazon Elastic Container Service,us-east-2,2.218e-07,USD
+Mar-24,Amazon Elastic Container Service for Kubernetes,ap-south-1,0.0,USD
+Mar-24,Amazon Elastic Container Service for Kubernetes,us-east-1,0.0,USD
+Mar-24,Amazon Elastic Load Balancing,ap-south-1,2.64694e-05,USD
+Mar-24,Amazon Elastic Load Balancing,us-east-1,2.658e-07,USD
+Mar-24,Amazon Elastic Load Balancing,us-east-2,1.2e-09,USD
+Mar-24,Amazon Location Service,ap-northeast-1,0.0,USD
+Mar-24,Amazon Location Service,us-west-2,0.0,USD
+Mar-24,Amazon Relational Database Service,ap-south-1,8.1e-09,USD
+Mar-24,Amazon Relational Database Service,us-east-1,-0.0,USD
+Mar-24,Amazon Route 53,global,0.0,USD
+Mar-24,Amazon Simple Notification Service,ap-northeast-3,0.0,USD
+Mar-24,Amazon Simple Notification Service,ap-south-1,0.0,USD
+Mar-24,Amazon Simple Queue Service,ap-south-1,0.0,USD
+Mar-24,Amazon Simple Queue Service,us-west-1,0.0,USD
+Mar-24,Amazon Simple Storage Service,ap-south-1,4.218e-07,USD
+Mar-24,Amazon Simple Storage Service,eu-west-2,0.0002578,USD
+Mar-24,Amazon Simple Storage Service,us-east-1,1.08854e-05,USD
+Mar-24,Amazon Simple Storage Service,us-east-2,2.73e-08,USD
+Mar-24,Amazon Virtual Private Cloud,ap-south-1,-0.0,USD
+Mar-24,Amazon Virtual Private Cloud,us-east-1,-0.0,USD
+Mar-24,Amazon Virtual Private Cloud,us-east-2,-0.0,USD
+Mar-24,AmazonCloudWatch,ap-south-1,1.82e-08,USD
+Mar-24,AmazonCloudWatch,ap-southeast-2,0.0,USD
+Mar-24,AmazonCloudWatch,us-east-1,0.0,USD
+Mar-24,AmazonCloudWatch,us-east-2,0.0,USD
+Total,,,-3.292000000026597e-07,USD

@@ -1,51 +1,128 @@
 [
     {
-        "Bucket": "204546626451-us-east-2-cleardatalogs",
-        "Total Storage Size (Bytes)": 982301,
-        "Last Modified Date": "2022-06-19",
+        "Bucket": "aws-cloudtrail-logs-562041613760-b0bb6995",
+        "Total Storage Size (Bytes)": 729591,
+        "Last Modified Date": "2023-10-31",
         "Storage Class": "STANDARD",
         "Object Count": 1000
     },
     {
-        "Bucket": "audit-logs-204546626451-us-east-1-3207777",
-        "Total Storage Size (Bytes)": 723057,
+        "Bucket": "cf-templates-i8y53w4c2czb-ap-south-1",
+        "Total Storage Size (Bytes)": 477718,
+        "Last Modified Date": "2024-02-08",
+        "Storage Class": "STANDARD",
+        "Object Count": 60
+    },
+    {
+        "Bucket": "codepipeline-ap-south-1-928496056498",
+        "Total Storage Size (Bytes)": 57815,
+        "Last Modified Date": "2024-01-22",
+        "Storage Class": "STANDARD",
+        "Object Count": 30
+    },
+    {
+        "Bucket": "codepipeline-s3-artifact-us-east-1",
+        "Total Storage Size (Bytes)": 2220,
+        "Last Modified Date": "2024-01-31",
+        "Storage Class": "STANDARD",
+        "Object Count": 2
+    },
+    {
+        "Bucket": "codepipeline-us-east-1-191189187591",
+        "Total Storage Size (Bytes)": 99447,
+        "Last Modified Date": "2024-02-29",
+        "Storage Class": "STANDARD",
+        "Object Count": 99
+    },
+    {
+        "Bucket": "config-bucket-562041613760",
+        "Total Storage Size (Bytes)": 12665,
+        "Last Modified Date": "2023-08-10",
+        "Storage Class": "STANDARD",
+        "Object Count": 30
+    },
+    {
+        "Bucket": "demosandr",
+        "Total Storage Size (Bytes)": 6103809,
+        "Last Modified Date": "2023-02-08",
+        "Storage Class": "STANDARD",
+        "Object Count": 214
+    },
+    {
+        "Bucket": "devops-poc-sample",
+        "Total Storage Size (Bytes)": 33687,
+        "Last Modified Date": "2024-01-25",
+        "Storage Class": "STANDARD",
+        "Object Count": 1
+    },
+    {
+        "Bucket": "eks-cluster-state-store",
+        "Total Storage Size (Bytes)": 33466,
+        "Last Modified Date": "2024-02-08",
+        "Storage Class": "STANDARD",
+        "Object Count": 1
+    },
+    {
+        "Bucket": "finops-indium",
+        "Total Storage Size (Bytes)": 0,
+        "Last Modified Date": "2023-08-10",
+        "Storage Class": "STANDARD",
+        "Object Count": 1
+    },
+    {
+        "Bucket": "indium-nlp-poc-results",
+        "Total Storage Size (Bytes)": 85,
+        "Last Modified Date": "2022-08-25",
+        "Storage Class": "STANDARD",
+        "Object Count": 1
+    },
+    {
+        "Bucket": "ixiegaming",
+        "Total Storage Size (Bytes)": 15457,
+        "Last Modified Date": "2023-11-23",
+        "Storage Class": "STANDARD",
+        "Object Count": 1
+    },
+    {
+        "Bucket": "kishore-s3-bucket-statefilestore",
+        "Total Storage Size (Bytes)": 45475,
+        "Last Modified Date": "2024-02-16",
+        "Storage Class": "STANDARD",
+        "Object Count": 2
+    },
+    {
+        "Bucket": "resultscx-poc-s3-deployment-dynamic-url",
+        "Total Storage Size (Bytes)": 125,
+        "Last Modified Date": "2023-08-31",
+        "Storage Class": "STANDARD",
+        "Object Count": 1
+    },
+    {
+        "Bucket": "s3finopssamplewaf",
+        "Total Storage Size (Bytes)": 125,
         "Last Modified Date": "2023-08-30",
         "Storage Class": "STANDARD",
-        "Object Count": 1000
+        "Object Count": 1
     },
     {
-        "Bucket": "audit-logs-204546626451-us-east-2-6594136",
-        "Total Storage Size (Bytes)": 345816,
-        "Last Modified Date": "2023-10-11",
+        "Bucket": "sstbootstrap-useast124d14e4b-1kf2vcauo4lf9",
+        "Total Storage Size (Bytes)": 4201,
+        "Last Modified Date": "2022-10-13",
         "Storage Class": "STANDARD",
-        "Object Count": 1000
+        "Object Count": 4
     },
     {
-        "Bucket": "cf-templates-1rgx57z4fs7wl-us-east-2",
-        "Total Storage Size (Bytes)": 21893,
-        "Last Modified Date": "2022-06-09",
+        "Bucket": "velans-eks-cluster-state-store",
+        "Total Storage Size (Bytes)": 181,
+        "Last Modified Date": "2024-01-22",
         "Storage Class": "STANDARD",
-        "Object Count": 5
+        "Object Count": 1
     },
     {
-        "Bucket": "remitone-galen-audio",
-        "Total Storage Size (Bytes)": 1022712161,
-        "Last Modified Date": "2022-09-12",
+        "Bucket": "yesh-eks-bucket",
+        "Total Storage Size (Bytes)": 33716,
+        "Last Modified Date": "2024-02-01",
         "Storage Class": "STANDARD",
-        "Object Count": 1000
-    },
-    {
-        "Bucket": "remitone-server-dev",
-        "Total Storage Size (Bytes)": 39831010,
-        "Last Modified Date": "2022-07-26",
-        "Storage Class": "STANDARD",
-        "Object Count": 1000
-    },
-    {
-        "Bucket": "remitone-server-storage",
-        "Total Storage Size (Bytes)": 542494065,
-        "Last Modified Date": "2023-08-28",
-        "Storage Class": "STANDARD",
-        "Object Count": 749
+        "Object Count": 1
     }
 ]

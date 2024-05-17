@@ -1,7 +1,10 @@
 
 from django.http import JsonResponse
 from .models import CustomUser
-from .serializers import CustomUserSerializer, LoginSerializer
+from .serializers import CustomUserSerializer, LoginSerializer, CustomTokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenVerifyView
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 import boto3
 from rest_framework import status
@@ -15,7 +18,7 @@ import dateutil.relativedelta as dateutil
 import datetime
 import os
 import sys
-from rest_framework.permissions import AllowAny,AllowAny
+from rest_framework.permissions import AllowAny,AllowAny, IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import HttpResponse
 import boto3
@@ -37,9 +40,15 @@ from django.contrib.auth.hashers import make_password,check_password
 from .forms import AWSConfigForm
 import re
 import requests
+from rest_framework.generics import ListAPIView
+
+
+
+
 class AWSConfigure(APIView):
     authentication_classes=[JWTAuthentication]
-    permission_classes=[AllowAny]
+    permission_classes=[IsAuthenticated]
+
     def post(self, request):
             access_key = request.data.get('Access Key')
             secret_key = request.data.get('Secret Key')
@@ -62,10 +71,8 @@ class AWSConfigure(APIView):
                         )
                         account_id = sts_client.get_caller_identity()["Account"]
                         email=sts_client.get_caller_identity()['Arn']
+                        print(sts_client.get_caller_identity())
                         
-                        
-                        response = iam_client.list_users()
-
                         
                         settings.AWS_ACCESS_KEY_ID = access_key
                         settings.AWS_SECRET_ACCESS_KEY = secret_key
@@ -86,6 +93,274 @@ class AWSConfigure(APIView):
 
             # Return an error response for invalid or missing keys
             return Response({"error": "Invalid or missing access_key and secret_key"}, status=status.HTTP_400_BAD_REQUEST)         
+class AWSAccountDetails(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self,request):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+            
+            iam_client = boto3.client(
+                            'iam',
+                            aws_access_key_id=access_key,
+                            aws_secret_access_key=secret_key,
+                        )
+            sts_client = boto3.client(
+                        'sts',
+                        aws_access_key_id=access_key,
+                        aws_secret_access_key=secret_key,
+                        )
+            response_sts = sts_client.get_caller_identity()
+            response_iam = iam_client.get_access_key_last_used(AccessKeyId=access_key)
+            response_iam_user = iam_client.get_user(UserName=response_iam["UserName"])
+            response_iam_access_keys = iam_client.list_access_keys(UserName=response_iam_user["User"]["UserName"])
+            output_data = {}
+            # output_data["UserId"] = response_sts["UserId"]
+            # output_data["UserName"] = response_iam["UserName"]
+            # output_data["Account"] = response_sts["Account"]
+            # output_data["Arn"] = response_sts["Arn"]
+            
+            output_data["UserInfo"] = response_iam_user["User"]
+            output_data["AccessKeyLastUsed"] = response_iam["AccessKeyLastUsed"]
+            output_data["AccessKeys"] = response_iam_access_keys["AccessKeyMetadata"]
+            return Response(output_data)
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
+
+class AWSResourcesListCount(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self,request):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
+            )
+            client = session.client('config')
+            resources = [ "AWS::ECR::Repository","AWS::EC2::NetworkAcl","AWS::EC2::VPC","AWS::ECS::Cluster","AWS::EC2::EIP", "AWS::EC2::Instance",  "AWS::EC2::RouteTable", "AWS::EC2::Subnet", "AWS::EC2::Volume", "AWS::EC2::VPC", "AWS::ACM::Certificate", "AWS::RDS::DBInstance", "AWS::RDS::DBSnapshot",  "AWS::S3::Bucket", "AWS::ElasticLoadBalancing::LoadBalancer", "AWS::AutoScaling::AutoScalingGroup","AWS::DynamoDB::Table" , "AWS::Lambda::Function","AWS::SecretsManager::Secret"]
+            response = client.get_discovered_resource_counts(resourceTypes=resources)
+            return Response(response['resourceCounts'])
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
+        
+class AWSEC2Details(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self,request):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
+            )
+
+            ec2_client = session.client('ec2')
+            instances = ec2_client.describe_instances()['Reservations']
+            ec2_description = []
+            # return Response(instances)
+            for info in instances:
+                for detail in info['Instances']:
+                    instance_detail = {}
+                    instance_detail['InstanceId'] = detail['InstanceId']
+                    instance_detail['InstanceType'] = detail['InstanceType']
+                    instance_detail['AvailabilityZone'] = detail['Placement']['AvailabilityZone']
+                    instance_detail['PrivateIpAddress'] = detail['PrivateIpAddress']
+                    instance_detail['SubnetId'] = detail['SubnetId']
+                    instance_detail['VpcId'] = detail['VpcId']
+                    instance_detail['Ebs-VolumeId'] = [{ebs['Ebs']['VolumeId']:ebs['Ebs']['Status']} for ebs in detail['BlockDeviceMappings']]
+                    instance_detail['PlatformDetails'] = detail['PlatformDetails']
+                    instance_detail['CpuOptions'] = detail['CpuOptions']
+                    ec2_description.append(instance_detail)
+            return Response(ec2_description)
+            
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
+
+class AWSS3Details(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+            
+            # Check if AWS credentials are configured
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+            # Configure the AWS client with the stored credentials
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+            )
+
+            s3_client = session.client('s3')
+            buckets = s3_client.list_buckets()
+            bucket_details = []
+            # bucket_lifecycle = s3_client.get_bucket_lifecycle_configuration(Bucket='demo-finops-indium')
+                
+            # return Response(object_details)
+            for bucket_name in buckets['Buckets']:
+                object_details = {}
+                objects = s3_client.list_objects_v2(Bucket=bucket_name['Name'])
+                object_details['BucketName'] = bucket_name['Name']
+                object_details['No-Of-Objects'] = len(objects['Contents']) if 'Contents' in objects else 0
+                # bucket_lifecycle = s3_client.get_bucket_lifecycle_configuration(Bucket='demo-finops-indium') 
+                # object_details['bucket_lifecycle'] = bucket_lifecycle if 'Rules' in bucket_lifecycle else 'No Rule Defined'
+                try:
+                    bucket_policy = s3_client.get_bucket_policy(Bucket=bucket_name['Name'])
+                    object_details['bucket-policy'] = bucket_policy['Policy'] if 'Policy' in bucket_policy else "No policy Defined"
+                except Exception as e:
+                    object_details['policy'] = 'No policy Defined'
+                try:
+                    bucket_lifecycle = s3_client.get_bucket_lifecycle_configuration(Bucket='demo-finops-indium')
+                    object_details['bucket_lifecycle'] = bucket_lifecycle['Rules'] if 'Rules' in bucket_lifecycle else 'No Rule Defined'
+                    
+                except Exception as e:
+                    object_details['bucket_lifecycle'] = 'No Rule Defined'
+                bucket_details.append(object_details)
+            return Response(bucket_details)
+
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+
+
+class AWSVpcDetails(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+            
+            # Check if AWS credentials are configured
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+            # Configure the AWS client with the stored credentials
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
+            )
+            ec2_client = session.client('ec2')
+            vpcs = ec2_client.describe_vpcs()
+            return Response(vpcs)
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+
+
+
+class AWSAllServiceCost(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+            
+            # Check if AWS credentials are configured
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+            # Configure the AWS client with the stored credentials
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+            )
+            ce_client = session.client('ce')
+
+            # Get parameters from the request
+            time_range = request.GET.get("time-range")
+
+            end_time = datetime.utcnow()
+            time_range=request.GET.get('time-range')
+            # Calculate start time based on the time range provided by the user
+            if time_range == "1 Week":
+                start_time = end_time - timedelta(weeks=1)
+            elif time_range == "15 Days":
+                start_time = end_time - timedelta(days=15)
+            elif time_range == "1 Month":
+                start_time = end_time - timedelta(weeks=4 * 1)
+            elif time_range == "3 Months":
+                start_time = end_time - timedelta(weeks=4 * 3)
+            elif time_range == "6 Months":
+                start_time = end_time - timedelta(weeks=4 * 6)
+            else:
+                # Handle the case when units_str is not provided or not a digit
+                return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+
+            filter_ec2 = { 
+                'Dimensions': {
+                    'Key': 'SERVICE',
+                    'Values': ["Amazon Elastic Compute Cloud - Compute","Amazon Elastic Container Service","Amazon Simple Storage Service","Amazon Elastic Container Registry","AWS Lambda","Amazon Relational Database Service","AWS Secrets Manager","AWS WAF"]
+                }
+            }
+
+            response = ce_client.get_cost_and_usage(
+                TimePeriod={
+                    'Start': start_time.strftime('%Y-%m-%d'),
+                    'End': end_time.strftime('%Y-%m-%d'),
+                },
+                Granularity='DAILY',
+                Filter= filter_ec2,
+                GroupBy=[
+                    {
+                        'Type': 'DIMENSION',
+                        'Key': 'SERVICE'
+                    },
+                ],
+                Metrics=['UnblendedCost']
+            )
+            
+            data = response['ResultsByTime']
+            # return Response(response)
+            cost_info = {}
+            for result in data:
+                cost_group = result['Groups']
+                print(cost_group)
+                for cost in cost_group:
+                    resource = cost['Keys'][0]
+                    daily_cost = round(float(cost['Metrics']['UnblendedCost']['Amount']), 5)
+                    print(cost_info)
+                    if resource not in cost_info:
+                        cost_info[resource] = Decimal(daily_cost)
+                    else:
+                        cost_info[resource] += Decimal(daily_cost)
+            return Response(cost_info)
+            
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+
+class CheckAPI(APIView):
+    # authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+    def get(self,request):
+        print("inside")
+        print("Authenticated user:", request.user)
+        return Response({"Hello":12})
+
 class RegisterUser(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
@@ -104,40 +379,54 @@ class RegisterUser(APIView):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-
-class LoginView(APIView):
+class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
+    serializer_class = CustomTokenObtainPairSerializer
 
-    def post(self, request):
-        try:
-            serializer = LoginSerializer(data=request.data)
-            if serializer.is_valid():
-                email = serializer.validated_data['email']
-                password = serializer.validated_data['password']
+    # def post(self, request, *args, **kwargs):
+    #     serializer = self.serializer_class(data=request.data)
+    #     if serializer.is_valid():
+    #         return Response(serializer.validated_data, status=status.HTTP_200_OK)
+    #     else:
+    #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# class LoginView(APIView):
+#     permission_classes = [AllowAny]
+
+#     def post(self, request):
+#         try:
+#             serializer = LoginSerializer(data=request.data)
+#             if serializer.is_valid():
+#                 email = serializer.validated_data['email']
+#                 password = serializer.validated_data['password']
 
                
-                user = CustomUser.objects.filter(email=email).first()
-                if user and user.check_password(password):
+#                 user = CustomUser.objects.filter(email=email).first()
+#                 print(user)
+#                 if user and user.check_password(password):
                     
-                    refresh = RefreshToken.for_user(user)
+#                     refresh = RefreshToken.for_user(user)
                     
                     
-                    return JsonResponse({'email': email, 'access_token': str(refresh.access_token)}, status=status.HTTP_200_OK)
-                else:
-                    return JsonResponse({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#                     return JsonResponse({'email': email, 'access_token': str(refresh.access_token)}, status=status.HTTP_200_OK)
+#                 else:
+#                     return JsonResponse({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+#             else:
+#                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#         except Exception as e:
+#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class UserListView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
     def get(self, request):
         users = CustomUser.objects.all()
+        print(users)
         serializer = CustomUserSerializer(users, many=True)
-        return JsonResponse(serializer.data)
-
+        return Response(serializer.data)
+# class UserListView(ListAPIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
+#     serializer_class = CustomUserSerializer
+#     queryset = CustomUser.objects.all()
 class UserDeleteView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
@@ -183,16 +472,18 @@ class EC2_Memory_utilization(APIView):
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
             all_utilization_info = []
-
-            regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
-
+            client = session.client('ec2')
+            data = client.describe_regions()
+            print(data)
+            regions = [region['RegionName'] for region in data['Regions']]
+            
             for region_name in regions:
                 ec2_client = session.client('ec2', region_name=region_name)
 
                 response = ec2_client.describe_instances()
-
                 for reservation in response['Reservations']:
                     for instance in reservation['Instances']:
                         instance_id = instance['InstanceId']
@@ -209,6 +500,7 @@ class EC2_Memory_utilization(APIView):
                         # if units_str is not None and units_str.isdigit():
                         #     days = int(units_str)
                         time_range=request.GET.get('time-range')
+                        start_time=0
                         # Calculate start time based on the time range provided by the user
                         if time_range == "1 Week":
                             start_time = end_time - timedelta(weeks=1)
@@ -407,11 +699,12 @@ class RDSData(APIView):
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
             cloudwatch_namespace = 'AWS/RDS'
             cpu_metric_name = 'CPUUtilization'
             freeable_memory_metric_name = 'FreeableMemory'
-            regions = [region['RegionName'] for region in boto3.client('ec2').describe_regions()['Regions']]
+            regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
 
             # Load instance memory information from the CSV file into a dictionary
             instance_memory_info = {}
@@ -422,19 +715,32 @@ class RDSData(APIView):
                     memory = row['Memory']
                     instance_memory_info[instance_type] = float(memory) if memory != 'N/A' else None
 
+            
+            end_time = datetime.utcnow()
+            units_str = request.GET.get('units')
+            start_time = 0
+            days = 0
+            if units_str is not None and units_str.isdigit():
+                days = int(units_str)
+            time_range = request.GET.get('time-range')
+            if time_range == "days":
+                start_time = end_time - timedelta(days=days)
+            elif time_range == "weeks":
+                start_time = end_time - timedelta(weeks=days)
+            elif time_range == "months":
+                start_time = end_time - timedelta(weeks=4 * days)
             # Initialize an empty list to store instance details
             instances_list = []
-
+            loop = 0
             # Loop through each region
             for region in regions:
                 # Initialize session client for RDS in the current region
-                rds_client_region = boto3.client('rds', region_name=region)
+                rds_client_region = session.client('rds', region_name=region)
                 # Initialize session client for CloudWatch
-                cloudwatch_client = boto3.client('cloudwatch', region_name=region)
+                cloudwatch_client = session.client('cloudwatch', region_name=region)
 
                 # Fetch RDS instances in the region
                 instances = rds_client_region.describe_db_instances()['DBInstances']
-
                 # Loop through each RDS instance and gather details
                 for instance in instances:
                     db_identifier = instance['DBInstanceIdentifier']
@@ -446,18 +752,7 @@ class RDSData(APIView):
 
                     storage = instance.get('AllocatedStorage', 'N/A')
                     allocated_storage = instance['AllocatedStorage']
-                    end_time = datetime.utcnow()
-                    units_str = request.GET.get('units')
-                    if units_str is not None and units_str.isdigit():
-                        days = int(units_str)
-                    time_range = request.GET.get('time-range')
-                    if time_range == "days":
-                        start_time = end_time - timedelta(days=days)
-                    elif time_range == "weeks":
-                        start_time = end_time - timedelta(weeks=days)
-                    elif time_range == "months":
-                        start_time = end_time - timedelta(weeks=4 * days)
-
+                    
                     # Load memory information based on matching instance type
                     memory = instance_memory_info.get(instance_type, None)
 
@@ -474,6 +769,7 @@ class RDSData(APIView):
                         StartTime=start_time,
                         EndTime=end_time,
                         Period=7200,  # 1 hour intervals
+                        # Period=3600,
                         Statistics=['Average']
                     )
 
@@ -490,14 +786,22 @@ class RDSData(APIView):
                         StartTime=start_time,
                         EndTime=end_time,
                         Period=7200,  # 1 hour intervals
+                        # Period=3600,
                         Statistics=['Average']
                     )
+
+                    if loop==0:
+                        print(cpu_metric)
+                        print("\n\n")
+                        print(freeable_memory_metric)
+                        loop = loop+1
 
                     # Get the latest data point for each metric
                     cpu_utilization = cpu_metric['Datapoints'][-1]['Average'] if cpu_metric['Datapoints'] else 'N/A'
                     freeable_memory = freeable_memory_metric['Datapoints'][-1]['Average'] if freeable_memory_metric['Datapoints'] else 'N/A'
+                    # bytes to gigabyte - 1024 bytes in one kilobyte (1024 ** 1), 1024 kilobytes in one megabyte (1024 ** 2), and 1024 megabytes in one gigabyte (1024 ** 3)
                     freeable_memory_gb = freeable_memory / (1024 ** 3) if freeable_memory != 'N/A' else 'N/A'
-                    free_memory = (freeable_memory_gb, 2) if freeable_memory != 'N/A' else 'N/A'
+                    free_memory = freeable_memory_gb if freeable_memory != 'N/A' else 'N/A'
                     used_memory = memory - free_memory if memory is not None and free_memory != 'N/A' else 'N/A'
                     utilized_memory_in_percentage = (used_memory / memory) * 100 if memory is not None and used_memory != 'N/A' else 'N/A'
                     
@@ -548,6 +852,7 @@ class Secrets_data(APIView):
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
             regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
 
@@ -613,6 +918,7 @@ def fetch_ecr_data_for_regions(request):
     session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
     ecr_data_list = []
     regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
@@ -699,7 +1005,6 @@ class Get_S3_Data(APIView):
 
             # Create a list to store bucket data
             bucket_data = []
-
             for bucket in response['Buckets']:
                 bucket_name = bucket['Name']
                 try:
@@ -709,7 +1014,6 @@ class Get_S3_Data(APIView):
                     last_modified = None
                     object_count = 0
                     storage_class = None
-
                     if 'Contents' in bucket_objects:
                         object_count = len(bucket_objects['Contents'])
                         for obj in bucket_objects['Contents']:
@@ -855,6 +1159,7 @@ class LambdaMetricsView(APIView):
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
             lambda_client = session.client('lambda')
 
@@ -925,7 +1230,6 @@ class LambdaMetricsView(APIView):
                         StartTime=start_time,
                         EndTime=end_time,
                     )
-
                     invocations = response['MetricDataResults'][0]['Values']
                     avg_duration = response['MetricDataResults'][1]['Values']
                     concurrent_executions = response['MetricDataResults'][2]['Values']
@@ -970,7 +1274,9 @@ class FetchAWSCostView(APIView):
         
             # Initialize 'start_time' with a default value
             end_time = datetime.utcnow()
+            start_time = end_time - timedelta(days=1)
             time_range=request.GET.get('time-range')
+            
                             # Calculate start time based on the time range provided by the user
             if time_range == "1 Week":
                 start_time = end_time - timedelta(weeks=1)
@@ -1004,9 +1310,11 @@ class FetchAWSCostView(APIView):
             cost_data = response['ResultsByTime']
             current_date = datetime.now().strftime("%Y-%m-%d")
             dynamic_filename = f"cost_details_{current_date}.csv"
+            output_directory = "api_v2/aws_cost_accelerator_response"
+            os.makedirs(output_directory,exist_ok=True)
+            output_file_path = os.path.join(output_directory,dynamic_filename)
             response = HttpResponse(content_type='text/csv')
             
-
             writer = csv.writer(response)
             writer.writerow(['Date', 'Service', 'Region', 'Amount', 'Unit'])
 
@@ -1027,6 +1335,8 @@ class FetchAWSCostView(APIView):
 
             writer.writerow(['Total', '', '', total_cost, 'USD'])
 
+            with open(output_file_path,'w') as f:
+                f.write(response.content.decode('utf-8'))
             return response
 
         except Exception as e:
@@ -1215,8 +1525,10 @@ class Get_ECS_Data(APIView):
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
             end_time = datetime.utcnow()
+            start_time = 0
             time_range=request.GET.get('time-range')
                             # Calculate start time based on the time range provided by the user
             if time_range == "1 Week":
@@ -1248,14 +1560,13 @@ class Get_ECS_Data(APIView):
 
                 # List all ECS clusters
                 response = ecs_client.list_clusters()
-
+                
                 for cluster_arn in response['clusterArns']:
                     cluster_name = cluster_arn.split('/')[-1]
                     cluster_data = {'Cluster': cluster_name, 'Services': []}
 
                     # List all services in the cluster
                     services_response = ecs_client.list_services(cluster=cluster_name)
-
                     for service_arn in services_response['serviceArns']:
                         service_name = service_arn.split('/')[-1]
                         service_data = {'Service': service_name, 'Metrics': []}
@@ -1802,6 +2113,7 @@ class Get_Elastic_Ip(APIView):
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
             ec2 = session.client('ec2')
 
@@ -1817,7 +2129,7 @@ class Get_Elastic_Ip(APIView):
 
                 # Use the describe_addresses method to get information about Elastic IPs in the region
                 response = ec2_client.describe_addresses()
-
+                print(response)
                 # Iterate through the Elastic IPs in the region
                 for elastic_ip_info in response['Addresses']:
                     allocation_id = elastic_ip_info['AllocationId']
@@ -3535,6 +3847,7 @@ class EC2_Recommendations(APIView):
             session = boto3.Session(
                     aws_access_key_id=access_key,
                     aws_secret_access_key=secret_key,
+                    region_name='ap-south-1'
                 )
             ec2 = session.client('ec2')
 
@@ -3558,6 +3871,7 @@ class EC2_Recommendations(APIView):
 
                         
                         end_time = datetime.utcnow()
+                        start_time = 0
                         time_range=request.GET.get('time-range')
                                         # Calculate start time based on the time range provided by the user
                         if time_range == "1 Week":
@@ -3572,7 +3886,6 @@ class EC2_Recommendations(APIView):
                             start_time = end_time - timedelta(weeks=4 * 3)
                         elif time_range == "6 Months":
                             start_time = end_time - timedelta(weeks=4 * 6)
-                        print(start_time)
                         response_cpu = cloudwatch.get_metric_data(
                             MetricDataQueries=[
                                 {
@@ -3605,13 +3918,10 @@ class EC2_Recommendations(APIView):
                         average_value_cpu = 0
                         if 'MetricDataResults' in response_cpu:
                             utilization_info = response_cpu['MetricDataResults'][0]['Values']
-                            print(utilization_info)
                             if utilization_info:
                                 average_value_cpu = round(sum(utilization_info) / len(utilization_info),3)
-                            print(average_value_cpu)
-
+        
                         # Extract volume information
-
                         if average_value_cpu > 0:
                                 instance_data.append({
                                     'Region': region_name,
@@ -3623,6 +3933,7 @@ class EC2_Recommendations(APIView):
                                 })
 
             # Read CSV data into a dictionary for efficient lookup
+            print(instance_data)
             instance_prices = {}
             with open('ec2_instance_prices.csv', newline='') as csvfile:
                 reader = csv.DictReader(csvfile)
@@ -3635,7 +3946,9 @@ class EC2_Recommendations(APIView):
                         'RAM (GiB)': row['RAM (GiB)'],
                     }
             csv_first_letters = set(instance_type[0] for instance_type in instance_prices.keys())
+            print(csv_first_letters)
             # Process instance data
+            response_result_updated = []
             for instance in instance_data:
                 instance_type = instance['InstanceType']
 
@@ -3680,14 +3993,14 @@ class EC2_Recommendations(APIView):
 
                     for matching_instance in matching_ram_instances:
                         matching_data.append(matching_instance)
-                    ec2_json_response = {
-                        'instanceData :': existing_data,
-                        'Matching Instance Data  :': matching_data,
-                    }
-                    response_json = json.dumps(ec2_json_response, indent=4)
-                    recommendation_response = HttpResponse(response_json, content_type='application/json')
+                    # ec2_json_response = {
+                    #     'instanceData :': existing_data,
+                    #     'Matching Instance Data  :': matching_data,
+                    # }
+                    # response_json = json.dumps(ec2_json_response, indent=4)
+                    # recommendation_response = HttpResponse(response_json, content_type='application/json')
                     
-                    return recommendation_response
+                    # return recommendation_response
                     
 
                 else:
@@ -3699,14 +4012,24 @@ class EC2_Recommendations(APIView):
                                             "RAM_utilization" :instance['RAM_Utilization'],
                                             "Suggestion": "No action needed." ,
                                             "Instance Price Data": instance_price_data})
-                    ec2_json_response = {
+                    # ec2_json_response = {
+                    #     'instanceData :': existing_data,
+                    #     'Matching Instance Data  :': matching_data,
+                    # }
+                    # response_json = json.dumps(ec2_json_response, indent=4)
+                    # response = HttpResponse(response_json, content_type='application/json')
+                    
+                    # return response
+                
+                ec2_json_response = {
                         'instanceData :': existing_data,
                         'Matching Instance Data  :': matching_data,
                     }
-                    response_json = json.dumps(ec2_json_response, indent=4)
-                    response = HttpResponse(response_json, content_type='application/json')
-                    
-                    return response
+                response_result_updated.append(ec2_json_response)
+
+            response_json = json.dumps(response_result_updated, indent=4)
+            response = HttpResponse(response_json, content_type='application/json')        
+            return response
                     
         except Exception as e:
             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
@@ -3744,6 +4067,7 @@ class EC2_Utilization(APIView):
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
             all_utilization_info = []
 
@@ -3766,7 +4090,7 @@ class EC2_Utilization(APIView):
                         last_activity_time = self.get_last_activity_time(state, launch_time)
 
                         cloudwatch_client = session.client('cloudwatch', region_name=region_name)
-
+                        start_time = 0
                         end_time = datetime.utcnow()
                         time_range=request.GET.get('time-range')
                                         # Calculate start time based on the time range provided by the user
@@ -3859,7 +4183,7 @@ class EC2_Utilization(APIView):
             print(f"Count of instances with memory and CPU utilization between 0% and 50%: {count}")
 
             # Continue with the rest of your code or return the response
-            return JsonResponse({'utilization_info': all_utilization_info,
+            return Response({'utilization_info': all_utilization_info,
                                  'count':count})
 
         except Exception as e:
@@ -4561,7 +4885,7 @@ class EC2Recommendation(APIView):
     permission_classes = [AllowAny]
 
     def __init__(self):
-        self.ec2_url = 'http://13.232.78.91:8080/api/ec2_memory_data/?time-range=months&units=1'
+        self.ec2_url = 'http://13.232.78.91:8080/api/ec2_memory_data/?time-range=1 Month&units=1'
 
     def load_data(self):
         """
@@ -4688,7 +5012,7 @@ class ECSRecommendation(APIView):
     permission_classes = [AllowAny]
 
     def __init__(self):
-        self.ecs_url = 'http://13.232.78.91:8080/api/ecs-data/?time-range=months&units=1'
+        self.ecs_url = 'http://13.232.78.91:8080/api/ecs-data/?time-range=1 Month&units=1'
     def load_data(self):
         """
         Load the ECS (Elastic Container Service) data from the provided URL.
@@ -4991,10 +5315,11 @@ class LambdaMetricsAnalyzer(APIView):
             return Response({"error": f"An error occurred: {e}"}, status=500)
 
 
+                
 class AwsServiceCost(APIView):
-    def get (self , request):
-         authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
+    # def get (self , request):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
     
     def get(self, request, *args, **kwargs):
         try:
@@ -5013,7 +5338,7 @@ class AwsServiceCost(APIView):
             ce_client = session.client('ce')
 
             # Get parameters from the request
-            units_str = request.GET.get("units")
+            # units_str = request.GET.get("units")
             time_range = request.GET.get("time-range")
 
             end_time = datetime.utcnow()
@@ -5051,7 +5376,7 @@ class AwsServiceCost(APIView):
                 Filter=filter_ec2,
                 Metrics=['UnblendedCost']
             )
-
+            print(response)
             data = response['ResultsByTime']
 
             monthly_costs = {}

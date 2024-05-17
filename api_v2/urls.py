@@ -1,8 +1,15 @@
 from django.urls import path
 from . import views
 urlpatterns = [
+    path("check/",views.CheckAPI.as_view()),
     path('api/register/',views.RegisterUser.as_view()),
     path("aws_configure/", views.AWSConfigure.as_view(),name='configuration'),
+    path("aws/get_details/", views.AWSAccountDetails.as_view(), name = 'aws-account-details'),
+    path("aws/ec2-details/", views.AWSEC2Details.as_view(), name = 'aws-recources-details'),
+    path("aws/s3-details/", views.AWSS3Details.as_view(), name = 'aws-recources-s3-details'),
+    path("aws/vpc-details/", views.AWSVpcDetails.as_view(), name = 'aws-recources-s3-details'),
+    path("aws/all/cost/", views.AWSAllServiceCost.as_view(), name = 'aws-recources-s3-details'),
+    
     path('api/get_users/', views.UserListView.as_view(), name='user-list'),
     path('api/delete_user/<str:email>/', views.UserDeleteView.as_view(), name='user-delete'),
     #path("aws/configure/signout/",views.SignOutView.as_view(),name='aws-configure-signout'),
@@ -38,7 +45,8 @@ urlpatterns = [
     path('api/vpc_cost_data/',views.VPC_cost_data.as_view(),name='vpc-cost'),
     path('api/secrets_cost_data/',views.SecretsManager_cost_data.as_view(),name='secrets-cost'),
     path('api/rds_cost_data/',views.RDS_Cost_Data.as_view(),name='rds-cost'),
-    path('api/awsresourcecost',views.AwsServiceCost.as_view(),name='aws-resource-cost'),
+    path('api/awsresourcecost/',views.AwsServiceCost.as_view(),name='aws-resource-cost'),
+    path("aws/all/count/",views.AWSResourcesListCount.as_view(),name="all-cost"),
 
     #Unused resources
     path('api/unused_resource_data/',views.AWSResourceManager.as_view(),name="unused_resource"),

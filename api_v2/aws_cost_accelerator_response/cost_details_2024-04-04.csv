@@ -1,0 +1,77 @@
+Date,Service,Region,Amount,Unit
+Apr-24,AWS CloudTrail,ap-northeast-1,0.0,USD
+Apr-24,AWS CloudTrail,ap-northeast-2,0.0,USD
+Apr-24,AWS CloudTrail,ap-northeast-3,0.0,USD
+Apr-24,AWS CloudTrail,ap-south-1,0.0,USD
+Apr-24,AWS CloudTrail,ap-southeast-1,0.0,USD
+Apr-24,AWS CloudTrail,ap-southeast-2,0.0,USD
+Apr-24,AWS CloudTrail,ap-southeast-3,0.0,USD
+Apr-24,AWS CloudTrail,ca-central-1,0.0,USD
+Apr-24,AWS CloudTrail,eu-central-1,0.0,USD
+Apr-24,AWS CloudTrail,eu-north-1,0.0,USD
+Apr-24,AWS CloudTrail,eu-west-1,0.0,USD
+Apr-24,AWS CloudTrail,eu-west-2,0.0,USD
+Apr-24,AWS CloudTrail,eu-west-3,0.0,USD
+Apr-24,AWS CloudTrail,sa-east-1,0.0,USD
+Apr-24,AWS CloudTrail,us-east-1,0.0,USD
+Apr-24,AWS CloudTrail,us-east-2,0.0,USD
+Apr-24,AWS CloudTrail,us-west-1,0.0,USD
+Apr-24,AWS CloudTrail,us-west-2,0.0,USD
+Apr-24,AWS Cost Explorer,us-east-1,0.0,USD
+Apr-24,AWS Data Transfer,ap-south-1,-0.0001968127,USD
+Apr-24,AWS Data Transfer,eu-west-2,-0.0003276874,USD
+Apr-24,AWS Data Transfer,us-east-1,-0.0012102383,USD
+Apr-24,AWS Data Transfer,us-east-2,-2.28e-08,USD
+Apr-24,AWS Database Migration Service,ap-south-1,0.0,USD
+Apr-24,AWS Glue,eu-west-1,0.0,USD
+Apr-24,AWS Glue,us-east-1,0.0,USD
+Apr-24,AWS Key Management Service,ap-south-1,-2.86e-08,USD
+Apr-24,AWS Key Management Service,eu-west-3,0.0,USD
+Apr-24,AWS Migration Hub Refactor Spaces,ap-northeast-2,0.0,USD
+Apr-24,AWS Migration Hub Refactor Spaces,ap-northeast-3,0.0,USD
+Apr-24,AWS Migration Hub Refactor Spaces,ap-south-1,0.0,USD
+Apr-24,AWS Migration Hub Refactor Spaces,eu-west-1,0.0,USD
+Apr-24,AWS Migration Hub Refactor Spaces,us-east-1,0.0,USD
+Apr-24,AWS Migration Hub Refactor Spaces,us-east-2,0.0,USD
+Apr-24,AWS Migration Hub Refactor Spaces,us-west-1,0.0,USD
+Apr-24,AWS Secrets Manager,ap-south-1,-5.6e-09,USD
+Apr-24,AWS Secrets Manager,ca-central-1,0.0,USD
+Apr-24,AWS Secrets Manager,eu-central-1,0.0,USD
+Apr-24,AWS Secrets Manager,us-east-1,-1.82e-08,USD
+Apr-24,AWS WAF,global,-9.24e-08,USD
+Apr-24,Amazon DocumentDB (with MongoDB compatibility),us-east-1,2.8e-09,USD
+Apr-24,Amazon DynamoDB,us-east-2,0.0,USD
+Apr-24,Amazon EC2 Container Registry (ECR),ap-south-1,-4.2e-09,USD
+Apr-24,Amazon EC2 Container Registry (ECR),us-east-1,-1.5e-09,USD
+Apr-24,Amazon EC2 Container Registry (ECR),us-east-2,1.5e-09,USD
+Apr-24,EC2 - Other,ap-south-1,2.15033e-05,USD
+Apr-24,EC2 - Other,us-east-1,0.0011961393,USD
+Apr-24,Amazon Elastic Compute Cloud - Compute,ap-south-1,6.379e-07,USD
+Apr-24,Amazon Elastic Compute Cloud - Compute,us-east-1,0.0,USD
+Apr-24,Amazon Elastic Container Service,us-east-1,2.3954e-06,USD
+Apr-24,Amazon Elastic Container Service,us-east-2,-0.0,USD
+Apr-24,Amazon Elastic Container Service for Kubernetes,ap-south-1,0.0,USD
+Apr-24,Amazon Elastic Container Service for Kubernetes,us-east-1,0.0,USD
+Apr-24,Amazon Elastic Load Balancing,ap-south-1,0.0001744622,USD
+Apr-24,Amazon Elastic Load Balancing,us-east-1,4.566e-07,USD
+Apr-24,Amazon Elastic Load Balancing,us-east-2,-1e-10,USD
+Apr-24,Amazon Location Service,eu-west-2,0.0,USD
+Apr-24,Amazon Location Service,us-west-2,0.0,USD
+Apr-24,Amazon Relational Database Service,ap-south-1,3.9e-09,USD
+Apr-24,Amazon Relational Database Service,us-east-1,-4.2e-09,USD
+Apr-24,Amazon Route 53,global,0.0,USD
+Apr-24,Amazon Simple Notification Service,ap-south-1,0.0,USD
+Apr-24,Amazon Simple Notification Service,us-east-1,0.0,USD
+Apr-24,Amazon Simple Queue Service,ap-south-1,0.0,USD
+Apr-24,Amazon Simple Storage Service,ap-south-1,2.109e-07,USD
+Apr-24,Amazon Simple Storage Service,eu-west-2,0.0003276875,USD
+Apr-24,Amazon Simple Storage Service,us-east-1,1.12495e-05,USD
+Apr-24,Amazon Simple Storage Service,us-east-2,2.34e-08,USD
+Apr-24,Amazon Virtual Private Cloud,ap-south-1,0.0,USD
+Apr-24,Amazon Virtual Private Cloud,us-east-1,0.0,USD
+Apr-24,Amazon Virtual Private Cloud,us-east-2,0.0,USD
+Apr-24,AmazonCloudWatch,ap-south-1,0.0,USD
+Apr-24,AmazonCloudWatch,ap-southeast-2,0.0,USD
+Apr-24,AmazonCloudWatch,us-east-1,0.0,USD
+Apr-24,AmazonCloudWatch,us-east-2,0.0,USD
+Total,,,-1.4179999999976083e-07,USD

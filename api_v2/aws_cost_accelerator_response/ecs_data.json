@@ -67,6 +67,31 @@
                 "Cluster": "Capture-backend-app",
                 "Services": [
                     {
+                        "Service": "sp-config-service",
+                        "Metrics": [
+                            {
+                                "NetworkRxBytes": "No data available"
+                            },
+                            {
+                                "NetworkTxBytes": "No data available"
+                            },
+                            {
+                                "CpuUtilized": "No data available"
+                            },
+                            {
+                                "MemoryUtilized": "No data available"
+                            }
+                        ],
+                        "Service Info": {
+                            "Status": "ACTIVE",
+                            "Desired Count": 1,
+                            "Running Count": 1,
+                            "Pending Count": 0,
+                            "Task Definition": "arn:aws:ecs:us-east-1:562041613760:task-definition/sp-config:2",
+                            "Created At": "2024-03-28 12:27:23"
+                        }
+                    },
+                    {
                         "Service": "metadata-service",
                         "Metrics": [
                             {
@@ -87,8 +112,33 @@
                             "Desired Count": 2,
                             "Running Count": 2,
                             "Pending Count": 0,
-                            "Task Definition": "arn:aws:ecs:us-east-1:562041613760:task-definition/apis:23",
+                            "Task Definition": "arn:aws:ecs:us-east-1:562041613760:task-definition/apis:29",
                             "Created At": "2024-01-21 20:38:09"
+                        }
+                    },
+                    {
+                        "Service": "python-metadata",
+                        "Metrics": [
+                            {
+                                "NetworkRxBytes": "No data available"
+                            },
+                            {
+                                "NetworkTxBytes": "No data available"
+                            },
+                            {
+                                "CpuUtilized": "No data available"
+                            },
+                            {
+                                "MemoryUtilized": "No data available"
+                            }
+                        ],
+                        "Service Info": {
+                            "Status": "ACTIVE",
+                            "Desired Count": 2,
+                            "Running Count": 2,
+                            "Pending Count": 0,
+                            "Task Definition": "arn:aws:ecs:us-east-1:562041613760:task-definition/python-metadata:6",
+                            "Created At": "2024-03-15 11:44:30"
                         }
                     }
                 ]
@@ -97,7 +147,38 @@
     },
     {
         "Region": "us-east-2",
-        "Clusters": []
+        "Clusters": [
+            {
+                "Cluster": "pythonapp",
+                "Services": [
+                    {
+                        "Service": "app-svc",
+                        "Metrics": [
+                            {
+                                "NetworkRxBytes": "No data available"
+                            },
+                            {
+                                "NetworkTxBytes": "No data available"
+                            },
+                            {
+                                "CpuUtilized": "No data available"
+                            },
+                            {
+                                "MemoryUtilized": "No data available"
+                            }
+                        ],
+                        "Service Info": {
+                            "Status": "ACTIVE",
+                            "Desired Count": 2,
+                            "Running Count": 2,
+                            "Pending Count": 0,
+                            "Task Definition": "arn:aws:ecs:us-east-2:562041613760:task-definition/api:11",
+                            "Created At": "2024-02-29 16:37:14"
+                        }
+                    }
+                ]
+            }
+        ]
     },
     {
         "Region": "us-west-1",

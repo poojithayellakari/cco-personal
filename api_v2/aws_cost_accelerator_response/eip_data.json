@@ -1,0 +1,22 @@
+[
+    {
+        "Region": "ap-south-1",
+        "AllocationId": "eipalloc-0524fff4852ba076a",
+        "InstanceId": "i-0b2c3f87367a76756"
+    },
+    {
+        "Region": "ap-south-1",
+        "AllocationId": "eipalloc-07040dbc56ed10d68",
+        "InstanceId": "i-06be25222d2a95497"
+    },
+    {
+        "Region": "us-east-1",
+        "AllocationId": "eipalloc-010ffc3239940fc34",
+        "InstanceId": "Unattached"
+    },
+    {
+        "Region": "us-east-2",
+        "AllocationId": "eipalloc-001c5642fc97b9d5a",
+        "InstanceId": "Unattached"
+    }
+]
