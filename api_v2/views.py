@@ -47,7 +47,7 @@ from rest_framework.generics import ListAPIView
 
 class AWSConfigure(APIView):
     authentication_classes=[JWTAuthentication]
-    permission_classes=[IsAuthenticated]
+    permission_classes=[AllowAny]
 
     def post(self, request):
             access_key = request.data.get('Access Key')
@@ -95,7 +95,7 @@ class AWSConfigure(APIView):
             return Response({"error": "Invalid or missing access_key and secret_key"}, status=status.HTTP_400_BAD_REQUEST)         
 class AWSAccountDetails(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self,request):
         try:
@@ -291,8 +291,7 @@ class AWSAllServiceCost(APIView):
             )
             ce_client = session.client('ce')
 
-            # Get parameters from the request
-            time_range = request.GET.get("time-range")
+            # Get parameters from the request\
 
             end_time = datetime.utcnow()
             time_range=request.GET.get('time-range')
@@ -383,37 +382,37 @@ class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
     serializer_class = CustomTokenObtainPairSerializer
 
-    # def post(self, request, *args, **kwargs):
-    #     serializer = self.serializer_class(data=request.data)
-    #     if serializer.is_valid():
-    #         return Response(serializer.validated_data, status=status.HTTP_200_OK)
-    #     else:
-    #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-# class LoginView(APIView):
-#     permission_classes = [AllowAny]
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class LoginView(APIView):
+    permission_classes = [AllowAny]
 
-#     def post(self, request):
-#         try:
-#             serializer = LoginSerializer(data=request.data)
-#             if serializer.is_valid():
-#                 email = serializer.validated_data['email']
-#                 password = serializer.validated_data['password']
+    def post(self, request):
+        try:
+            serializer = LoginSerializer(data=request.data)
+            if serializer.is_valid():
+                email = serializer.validated_data['email']
+                password = serializer.validated_data['password']
 
                
-#                 user = CustomUser.objects.filter(email=email).first()
-#                 print(user)
-#                 if user and user.check_password(password):
+                user = CustomUser.objects.filter(email=email).first()
+                print(user)
+                if user and user.check_password(password):
                     
-#                     refresh = RefreshToken.for_user(user)
+                    refresh = RefreshToken.for_user(user)
                     
                     
-#                     return JsonResponse({'email': email, 'access_token': str(refresh.access_token)}, status=status.HTTP_200_OK)
-#                 else:
-#                     return JsonResponse({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-#             else:
-#                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#         except Exception as e:
-#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    return JsonResponse({'email': email, 'access_token': str(refresh.access_token)}, status=status.HTTP_200_OK)
+                else:
+                    return JsonResponse({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class UserListView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
@@ -1383,7 +1382,7 @@ class Send_cost_Email(APIView):
     permission_classes=[AllowAny]
     def post(self, request):
         try:
-            recipient_email = request.data.get('recipient_email')  # Get recipient email from frontend
+            recipient_email = request.data.get('recipient-email')  # Get recipient email from frontend
             if recipient_email:
                 subject = "AWS Cost Report"
                 current_date = datetime.now().strftime("%Y-%m-%d")
@@ -1426,6 +1425,7 @@ class Get_VPCData(APIView):
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
             aws_regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
 
@@ -1671,6 +1671,7 @@ class Get_load_balancer_Data(APIView):
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
             end_time = datetime.utcnow()
             time_range=request.GET.get('time-range')
@@ -1799,6 +1800,7 @@ class Get_EBS_Data(APIView):
                 session = boto3.Session(
                     aws_access_key_id=access_key,
                     aws_secret_access_key=secret_key,
+                    region_name='ap-south-1'
                 )
                 end_time = datetime.utcnow()
                 time_range=request.GET.get('time-range')
@@ -1908,6 +1910,7 @@ class Get_WAF_Data(APIView):
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
             end_time = datetime.utcnow()
             time_range=request.GET.get('time-range')
@@ -2247,6 +2250,7 @@ class Get_APIGateway(APIView):
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
             cloudwatch_client = session.client('cloudwatch')
             cache_hit_count_metric_name = 'CacheHitCount'
@@ -2399,6 +2403,7 @@ class Get_Snapshot_Data(APIView):
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
             ec2_client = session.client('ec2')
             snapshot_data = []
@@ -2443,77 +2448,7 @@ class Get_Snapshot_Data(APIView):
             return response
         except Exception as e:
                 return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
-                
-
-
-from io import BytesIO
-import pandas as pd
-
-
-class GetTotalBill(APIView):
-    authentication_classes=[JWTAuthentication]
-    permission_classes=[AllowAny]
-    def get(self, request):
-        try:
-            access_key = settings.AWS_ACCESS_KEY_ID
-            secret_key = settings.AWS_SECRET_ACCESS_KEY
-
-            # Check if AWS credentials are configured
-            if not access_key or not secret_key:
-                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
-
-            # Configure the AWS client with the stored credentials
-            session = boto3.Session(
-                aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-            )
-            client = session.client('ce', region_name='us-east-1')
-
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=30)
-
-            response = client.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_date.strftime('%Y-%m-%d'),
-                    'End': end_date.strftime('%Y-%m-%d')
-                },
-                Granularity='MONTHLY',
-                Metrics=['UnblendedCost'],
-                GroupBy=[
-                    {
-                        'Type': 'DIMENSION',
-                        'Key': 'SERVICE'
-                    },
-                    {
-                        'Type': 'DIMENSION',
-                        'Key': 'REGION'
-                    }
-                ]
-            )
-
-            cost_data = response['ResultsByTime']
-
-            data = []
-            for entry in cost_data:
-                date = entry['TimePeriod']['Start']
-                groups = entry['Groups']
-                for group in groups:
-                    service = group['Keys'][0]
-                    region = group['Keys'][1]
-                    cost = float(group['Metrics']['UnblendedCost']['Amount'])
-                    data.append([date, service, region, cost])
-
-            df = pd.DataFrame(data, columns=['Date', 'Service', 'Region', 'Cost'])
-
-            # Prepare and return cost data as a list of dictionaries
-            chart_data = []
-            for date, service, cost in zip(df['Date'], df['Service'], df['Cost']):
-                chart_data.append({'Date': date, 'Service': service, 'Cost': cost})
-
-            return JsonResponse({'chart_data': chart_data})
-
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+        
 
 from decimal import Decimal
 class DecimalEncoder(json.JSONEncoder):
@@ -2521,6 +2456,7 @@ class DecimalEncoder(json.JSONEncoder):
         if isinstance(obj, Decimal):
             return str(obj)
         return super(DecimalEncoder, self).default(obj)
+    
 class EC2_instance_cost_data(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
@@ -2785,6 +2721,7 @@ class ECR_cost_data(APIView):
             return response
         except Exception as e:
             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+
 class Lambda_cost_data(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
@@ -3316,8 +3253,12 @@ class SecretsManager_cost_data(APIView):
             response = HttpResponse(response_data, content_type='application/json')
             return response
         except Exception as e:
-            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+            return JsonResponse({"error": f"An error occurred: {e}"}, content_type='application/json', status=500)
+
+
 class RDS_Cost_Data(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
     def get(self, request, *args, **kwargs):
         try:
             access_key = settings.AWS_ACCESS_KEY_ID
@@ -3403,9 +3344,9 @@ class RDS_Cost_Data(APIView):
         except Exception as e:
             return JsonResponse({"error": f"An error occurred: {e}"}, content_type='application/json', status=500)
 
-
 overall_unused_data = []
 overall_unused_data_count=[]
+
 class AWSResourceManager(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
@@ -4704,11 +4645,12 @@ class RDS_Recommendation(APIView):
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
             cloudwatch_namespace = 'AWS/RDS'
             cpu_metric_name = 'CPUUtilization'
             freeable_memory_metric_name = 'FreeableMemory'
-            regions = [region['RegionName'] for region in boto3.client('ec2').describe_regions()['Regions']]
+            regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
 
             # Load instance memory information from the CSV file into a dictionary
             instance_memory_info = {}
@@ -4725,9 +4667,9 @@ class RDS_Recommendation(APIView):
             # Loop through each region
             for region in regions:
                 # Initialize session client for RDS in the current region
-                rds_client_region = boto3.client('rds', region_name=region)
+                rds_client_region = session.client('rds', region_name=region)
                 # Initialize session client for CloudWatch
-                cloudwatch_client = boto3.client('cloudwatch', region_name=region)
+                cloudwatch_client = session.client('cloudwatch', region_name=region)
 
                 # Fetch RDS instances in the region
                 instances = rds_client_region.describe_db_instances()['DBInstances']
@@ -5159,7 +5101,7 @@ class VPCRecommendation(APIView):
             'Recommendation': 'Evaluate usage for potential Reserved Instances or Savings Plans'
         }]
 
-    def generate_vpc_cost_savings_report(self, url):
+    def generate_vpc_cost_savings_report(self):
         """
         Generate cost-saving recommendations for VPC.
         """
@@ -5319,7 +5261,7 @@ class LambdaMetricsAnalyzer(APIView):
 class AwsServiceCost(APIView):
     # def get (self , request):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     
     def get(self, request, *args, **kwargs):
         try:
@@ -6265,3 +6207,4 @@ class AWS_Unused_Resource_and_EC2_Compute(APIView):
         except Exception as e:
             # Handle exceptions appropriately
             return JsonResponse({'error': str(e)}, status=500)
+
