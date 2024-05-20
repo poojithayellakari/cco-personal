@@ -96,7 +96,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'aws_cost_DB',
         'USER': 'postgres',
-        'PASSWORD': 'Password@123',
+        'PASSWORD': 'Pooji@123',
         'HOST': 'localhost',
         'PORT': '5432',
     }
