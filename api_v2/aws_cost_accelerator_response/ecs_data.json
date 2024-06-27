@@ -85,7 +85,7 @@
                         "Service Info": {
                             "Status": "ACTIVE",
                             "Desired Count": 1,
-                            "Running Count": 1,
+                            "Running Count": 0,
                             "Pending Count": 0,
                             "Task Definition": "arn:aws:ecs:us-east-1:562041613760:task-definition/sp-config:2",
                             "Created At": "2024-03-28 12:27:23"

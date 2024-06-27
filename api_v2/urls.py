@@ -8,8 +8,13 @@ urlpatterns = [
     path("aws/ec2-details/", views.AWSEC2Details.as_view(), name = 'aws-recources-details'),
     path("aws/s3-details/", views.AWSS3Details.as_view(), name = 'aws-recources-s3-details'),
     path("aws/vpc-details/", views.AWSVpcDetails.as_view(), name = 'aws-recources-s3-details'),
+    path("aws/Document_DB_Details/",views.Document_DB_Details.as_view(),name='aws-document-db-details'),
+    path("aws/SNS_Details/",views.SNS_Details.as_view(),name='aws-SNS_Details'),
     path("aws/all/cost/", views.AWSAllServiceCost.as_view(), name = 'aws-recources-s3-details'),
-    
+    path('api/all-services-available/',views.AvailableServices.as_view(),name="available-services"),
+    path('api/ses-service-details/',views.SES_Details.as_view(),name="ses-details"),
+ 
+    path('api/instance-usage-type/',views.Ec2_instance_usage_type.as_view(),name="ec2-instance-usage-type"),
     path('api/get_users/', views.UserListView.as_view(), name='user-list'),
     path('api/delete_user/<str:email>/', views.UserDeleteView.as_view(), name='user-delete'),
     #path("aws/configure/signout/",views.SignOutView.as_view(),name='aws-configure-signout'),
@@ -31,20 +36,32 @@ urlpatterns = [
     path('api/send_email/',views.Send_cost_Email.as_view(),name='send-mail'),#15 #Email
     path('api/api-gateway-data/',views.Get_APIGateway.as_view(),name='api-gateway'),#16 time
     path('api/snapshot_data/',views.Get_Snapshot_Data.as_view(),name='snapshot_data'),#17
+    path('api/get_detailed_usage_data/',views.Get_Detailed_usage_Data.as_view(),name='detailed_usage_data'),
+    path('api/eks-data/',views.EKS_Data.as_view(),name='eks-data'),
     
 
     # Graphs
 
     #path('api/EC2_instance_graphical_data/',views.EC2_Memory_utilization_Graph.as_view(),name='graph_data'),
-    path('api/ec2_cost_data/',views.EC2_instance_cost_data.as_view(),name='ec2_cost'),
-    path('api/s3_cost_data/',views.S3_cost_data.as_view(),name='s3_cost_data'),
-    path('api/ecr_cost_data/',views.ECR_cost_data.as_view(),name='ecr-cost'),
-    path('api/lambda_cost_data/',views.Lambda_cost_data.as_view(),name='lambda-cost'),
-    path('api/ecs_cost_data/',views.ECS_cost_data.as_view(),name="ecs-cost"),
-    path('api/waf_cost_data/',views.WAF_cost_data.as_view(),name="waf-cost"),
-    path('api/vpc_cost_data/',views.VPC_cost_data.as_view(),name='vpc-cost'),
-    path('api/secrets_cost_data/',views.SecretsManager_cost_data.as_view(),name='secrets-cost'),
-    path('api/rds_cost_data/',views.RDS_Cost_Data.as_view(),name='rds-cost'),
+    path('api/services_cost_data/',views.Services_Cost_Data.as_view(),name='services_cost'),
+    path('api/ec2_instance_cost/',views.EC2_Instance_Cost.as_view(),name='services_cost'),
+    path('api/ec2_region_wise_cost/',views.EC2_REGION_WISE_COST_DATA.as_view(),name='ec2_region_cost'),
+    # path('api/ec2_cost_data/',views.EC2_instance_cost_data.as_view(),name='ec2_cost'),
+    # path('api/s3_cost_data/',views.S3_cost_data.as_view(),name='s3_cost_data'),
+    # path('api/vpc_cost_data/',views.VPC_cost_data.as_view(),name='vpc-cost'),
+    # path('api/loadbalancer_cost_data/',views.LoadBalancer_cost_data.as_view(),name='loadbalancer_cost'),
+    # path('api/ebs_cost_data/',views.EBS_cost_data.as_view(),name='ebs-cost'),
+    # path('api/eip_cost_data/',views.EIP_cost_data.as_view(),name='eip-cost'),
+    # path('api/snapshot_cost_data/',views.SnapShot_cost_data.as_view(),name='snapshot-cost'),
+    # path('api/document_db_cost_data/',views.DocumentDB_cost_data.as_view(),name='documentdb-cost'),
+    # path('api/sns_cost_data/',views.SNS_cost_data.as_view(),name='sns-cost'),
+    # path('api/ses_cost_data/',views.SES_cost_data.as_view(),name='ses-cost'),
+    # path('api/ecr_cost_data/',views.ECR_cost_data.as_view(),name='ecr-cost'),
+    # path('api/lambda_cost_data/',views.Lambda_cost_data.as_view(),name='lambda-cost'),
+    # path('api/ecs_cost_data/',views.ECS_cost_data.as_view(),name="ecs-cost"),
+    # path('api/waf_cost_data/',views.WAF_cost_data.as_view(),name="waf-cost"),
+    # path('api/secrets_cost_data/',views.SecretsManager_cost_data.as_view(),name='secrets-cost'),
+    # path('api/rds_cost_data/',views.RDS_Cost_Data.as_view(),name='rds-cost'),
     path('api/awsresourcecost/',views.AwsServiceCost.as_view(),name='aws-resource-cost'),
     path("aws/all/count/",views.AWSResourcesListCount.as_view(),name="all-cost"),
 
@@ -64,5 +81,6 @@ urlpatterns = [
     path('api/vpc_recommendation/',views.VPCRecommendation.as_view(),name='vpc-recommendation'),
     path('api/ebs_recommendation/',views.EBSRecommendation.as_view(),name='ebs-recommendation'),
     path('api/lambda_recommendation/',views.LambdaMetricsAnalyzer.as_view(),name='Lambda-recommendation'),
+
 ]
 

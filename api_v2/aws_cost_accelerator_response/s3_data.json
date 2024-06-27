@@ -1,128 +1,205 @@
 [
     {
-        "Bucket": "aws-cloudtrail-logs-562041613760-b0bb6995",
-        "Total Storage Size (Bytes)": 729591,
-        "Last Modified Date": "2023-10-31",
+        "Bucket": "cf-templates-1hcqja0j1h3ko-ap-south-1",
+        "Total Storage Size (Bytes)": 1184,
+        "Last Modified Date": "2021-12-17",
+        "Storage Class": "STANDARD",
+        "Object Count": 1
+    },
+    {
+        "Bucket": "curatus-indium",
+        "Total Storage Size (Bytes)": 261127295,
+        "Last Modified Date": "2021-01-13",
+        "Storage Class": "STANDARD",
+        "Object Count": 521
+    },
+    {
+        "Bucket": "elasticbeanstalk-ap-south-1-013073235788",
+        "Total Storage Size (Bytes)": 453896,
+        "Last Modified Date": "2024-05-25",
+        "Storage Class": "STANDARD",
+        "Object Count": 64
+    },
+    {
+        "Bucket": "elasticbeanstalk-us-east-1-013073235788",
+        "Total Storage Size (Bytes)": 473439997,
+        "Last Modified Date": "2020-06-10",
+        "Storage Class": "STANDARD",
+        "Object Count": 34
+    },
+    {
+        "Bucket": "game-mon",
+        "Total Storage Size (Bytes)": 1326974,
+        "Last Modified Date": "2022-07-28",
+        "Storage Class": "STANDARD",
+        "Object Count": 1
+    },
+    {
+        "Bucket": "gamemon-desktop-builds",
+        "Total Storage Size (Bytes)": 1326536359,
+        "Last Modified Date": "2024-02-23",
+        "Storage Class": "STANDARD",
+        "Object Count": 11
+    },
+    {
+        "Bucket": "gamemon-zynga.indiumsoft.com",
+        "Total Storage Size (Bytes)": 64517810,
+        "Last Modified Date": "2024-02-23",
+        "Storage Class": "STANDARD",
+        "Object Count": 39
+    },
+    {
+        "Bucket": "gamemon.indiumsoft.com",
+        "Total Storage Size (Bytes)": 178364611,
+        "Last Modified Date": "2024-01-28",
+        "Storage Class": "STANDARD",
+        "Object Count": 64
+    },
+    {
+        "Bucket": "gamemondbbackup",
+        "Total Storage Size (Bytes)": 167444642,
+        "Last Modified Date": "2023-07-14",
+        "Storage Class": "STANDARD",
+        "Object Count": 21
+    },
+    {
+        "Bucket": "igniteminds-dev-qa",
+        "Total Storage Size (Bytes)": 1160967005,
+        "Last Modified Date": "2022-10-06",
         "Storage Class": "STANDARD",
         "Object Count": 1000
     },
     {
-        "Bucket": "cf-templates-i8y53w4c2czb-ap-south-1",
-        "Total Storage Size (Bytes)": 477718,
-        "Last Modified Date": "2024-02-08",
+        "Bucket": "igniteminds-qa",
+        "Total Storage Size (Bytes)": 4160768,
+        "Last Modified Date": "2022-10-11",
         "Storage Class": "STANDARD",
-        "Object Count": 60
+        "Object Count": 20
     },
     {
-        "Bucket": "codepipeline-ap-south-1-928496056498",
-        "Total Storage Size (Bytes)": 57815,
-        "Last Modified Date": "2024-01-22",
+        "Bucket": "ignitminds-dev",
+        "Total Storage Size (Bytes)": 4246935,
+        "Last Modified Date": "2023-05-05",
         "Storage Class": "STANDARD",
-        "Object Count": 30
+        "Object Count": 20
     },
     {
-        "Bucket": "codepipeline-s3-artifact-us-east-1",
-        "Total Storage Size (Bytes)": 2220,
-        "Last Modified Date": "2024-01-31",
+        "Bucket": "indium-carisk",
+        "Total Storage Size (Bytes)": 80038697,
+        "Last Modified Date": "2022-02-10",
+        "Storage Class": "STANDARD",
+        "Object Count": 101
+    },
+    {
+        "Bucket": "indium-patient360-s3bucket",
+        "Total Storage Size (Bytes)": 967,
+        "Last Modified Date": "2024-03-07",
+        "Storage Class": "STANDARD",
+        "Object Count": 1
+    },
+    {
+        "Bucket": "indium-test",
+        "Total Storage Size (Bytes)": 9710,
+        "Last Modified Date": "2019-11-28",
         "Storage Class": "STANDARD",
         "Object Count": 2
     },
     {
-        "Bucket": "codepipeline-us-east-1-191189187591",
-        "Total Storage Size (Bytes)": 99447,
-        "Last Modified Date": "2024-02-29",
+        "Bucket": "indium-tmi",
+        "Total Storage Size (Bytes)": 15603269,
+        "Last Modified Date": "2022-03-14",
         "Storage Class": "STANDARD",
-        "Object Count": 99
+        "Object Count": 180
     },
     {
-        "Bucket": "config-bucket-562041613760",
-        "Total Storage Size (Bytes)": 12665,
-        "Last Modified Date": "2023-08-10",
+        "Bucket": "indium-warren",
+        "Total Storage Size (Bytes)": 945421322,
+        "Last Modified Date": "2023-10-04",
         "Storage Class": "STANDARD",
-        "Object Count": 30
+        "Object Count": 88
     },
     {
-        "Bucket": "demosandr",
-        "Total Storage Size (Bytes)": 6103809,
-        "Last Modified Date": "2023-02-08",
+        "Bucket": "its3",
+        "Total Storage Size (Bytes)": 5053218175,
+        "Last Modified Date": "2023-12-15",
         "Storage Class": "STANDARD",
-        "Object Count": 214
+        "Object Count": 1000
     },
     {
-        "Bucket": "devops-poc-sample",
-        "Total Storage Size (Bytes)": 33687,
-        "Last Modified Date": "2024-01-25",
+        "Bucket": "mendix-test-buckets",
+        "Total Storage Size (Bytes)": 378184,
+        "Last Modified Date": "2020-02-03",
         "Storage Class": "STANDARD",
-        "Object Count": 1
+        "Object Count": 3
     },
     {
-        "Bucket": "eks-cluster-state-store",
-        "Total Storage Size (Bytes)": 33466,
-        "Last Modified Date": "2024-02-08",
+        "Bucket": "my-indium-s3",
+        "Total Storage Size (Bytes)": 2379097355,
+        "Last Modified Date": "2023-06-06",
         "Storage Class": "STANDARD",
-        "Object Count": 1
+        "Object Count": 1000
     },
     {
-        "Bucket": "finops-indium",
-        "Total Storage Size (Bytes)": 0,
-        "Last Modified Date": "2023-08-10",
+        "Bucket": "myindium-igniteminds",
+        "Total Storage Size (Bytes)": 2356152040,
+        "Last Modified Date": "2024-02-09",
         "Storage Class": "STANDARD",
-        "Object Count": 1
+        "Object Count": 1000
     },
     {
-        "Bucket": "indium-nlp-poc-results",
-        "Total Storage Size (Bytes)": 85,
-        "Last Modified Date": "2022-08-25",
+        "Bucket": "myindium-logs",
+        "Total Storage Size (Bytes)": 1094812,
+        "Last Modified Date": "2023-03-27",
         "Storage Class": "STANDARD",
-        "Object Count": 1
+        "Object Count": 1000
     },
     {
-        "Bucket": "ixiegaming",
-        "Total Storage Size (Bytes)": 15457,
-        "Last Modified Date": "2023-11-23",
+        "Bucket": "myindium-mobapp-prod",
+        "Total Storage Size (Bytes)": 4160573,
+        "Last Modified Date": "2022-10-17",
         "Storage Class": "STANDARD",
-        "Object Count": 1
+        "Object Count": 20
     },
     {
-        "Bucket": "kishore-s3-bucket-statefilestore",
-        "Total Storage Size (Bytes)": 45475,
-        "Last Modified Date": "2024-02-16",
+        "Bucket": "myindium-mobileapp-fend",
+        "Total Storage Size (Bytes)": 4246608,
+        "Last Modified Date": "2023-06-02",
+        "Storage Class": "STANDARD",
+        "Object Count": 20
+    },
+    {
+        "Bucket": "notes-app-api-dev-serverlessdeploymentbucket-onuixm5kd29z",
+        "Total Storage Size (Bytes)": 6769656,
+        "Last Modified Date": "2020-01-10",
+        "Storage Class": "STANDARD",
+        "Object Count": 3
+    },
+    {
+        "Bucket": "saasserverless-client-de-serverlessdeploymentbuck-1q4po57jfssnt",
+        "Total Storage Size (Bytes)": 4275,
+        "Last Modified Date": "2020-01-20",
+        "Storage Class": "STANDARD",
+        "Object Count": 3
+    },
+    {
+        "Bucket": "saasserverless-common-de-serverlessdeploymentbuck-1sahr6epcwjp1",
+        "Total Storage Size (Bytes)": 3348319,
+        "Last Modified Date": "2020-01-20",
         "Storage Class": "STANDARD",
         "Object Count": 2
     },
     {
-        "Bucket": "resultscx-poc-s3-deployment-dynamic-url",
-        "Total Storage Size (Bytes)": 125,
-        "Last Modified Date": "2023-08-31",
+        "Bucket": "saasserverless-servicere-serverlessdeploymentbuck-57ww9t2vuont",
+        "Total Storage Size (Bytes)": 30219151,
+        "Last Modified Date": "2020-01-20",
         "Storage Class": "STANDARD",
-        "Object Count": 1
+        "Object Count": 8
     },
     {
-        "Bucket": "s3finopssamplewaf",
-        "Total Storage Size (Bytes)": 125,
-        "Last Modified Date": "2023-08-30",
+        "Bucket": "wealthmanagementdemo.indiumsoft.com",
+        "Total Storage Size (Bytes)": 47671033,
+        "Last Modified Date": "2024-04-25",
         "Storage Class": "STANDARD",
-        "Object Count": 1
-    },
-    {
-        "Bucket": "sstbootstrap-useast124d14e4b-1kf2vcauo4lf9",
-        "Total Storage Size (Bytes)": 4201,
-        "Last Modified Date": "2022-10-13",
-        "Storage Class": "STANDARD",
-        "Object Count": 4
-    },
-    {
-        "Bucket": "velans-eks-cluster-state-store",
-        "Total Storage Size (Bytes)": 181,
-        "Last Modified Date": "2024-01-22",
-        "Storage Class": "STANDARD",
-        "Object Count": 1
-    },
-    {
-        "Bucket": "yesh-eks-bucket",
-        "Total Storage Size (Bytes)": 33716,
-        "Last Modified Date": "2024-02-01",
-        "Storage Class": "STANDARD",
-        "Object Count": 1
+        "Object Count": 287
     }
 ]

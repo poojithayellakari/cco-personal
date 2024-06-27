@@ -1,0 +1,362 @@
+[
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-021a467485da00f82",
+        "VolumeID": "vol-02a6ee71253990f24",
+        "Description": "Created by CreateImage(i-080fc6814126b9fef) for ami-02b8117a048f3d82f",
+        "SizeGiB": 50,
+        "StartTime": "2024-04-18T07:21:08.647000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0ce2040ef3d6fc853",
+        "VolumeID": "vol-0190b016e923f0777",
+        "Description": "Created by CreateImage(i-00748ae0e3e938e40) for ami-0c52bada5471905c7",
+        "SizeGiB": 30,
+        "StartTime": "2024-03-21T09:49:01.761000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-05ef2bc4848a27f47",
+        "VolumeID": "vol-01b68083bb54e17d5",
+        "Description": "Created by CreateImage(i-011fa9996c5f576aa) for ami-0304db8dd2d31887b",
+        "SizeGiB": 30,
+        "StartTime": "2024-03-08T11:20:24.432000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0a9d870ed3b4fc622",
+        "VolumeID": "vol-0cda21ae0d65c8bac",
+        "Description": "Created by CreateImage(i-0a33e8c957e9ea15f) for ami-09d424b372565e0b8",
+        "SizeGiB": 55,
+        "StartTime": "2024-01-22T12:46:50.127000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-05f95890ffad58a8b",
+        "VolumeID": "vol-0cda21ae0d65c8bac",
+        "Description": "backupgpu22jan2024",
+        "SizeGiB": 55,
+        "StartTime": "2024-01-22T12:36:30.030000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0831a3d10fb2c397c",
+        "VolumeID": "vol-0b832e0d022320dd6",
+        "Description": "Created by CreateImage(i-012f6b9330bea248a) for ami-0903a21600425b275",
+        "SizeGiB": 160,
+        "StartTime": "2023-10-12T12:30:35.470000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0280064e4e04b6ab5",
+        "VolumeID": "vol-0b832e0d022320dd6",
+        "Description": "texai-service-demo-april-2023-snapshot",
+        "SizeGiB": 100,
+        "StartTime": "2023-04-12T09:51:49.969000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0029a3b73b9f06b04",
+        "VolumeID": "vol-0b832e0d022320dd6",
+        "Description": "Texai-18-08-2022-latest",
+        "SizeGiB": 100,
+        "StartTime": "2022-08-18T15:36:38.096000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0e10edb749c301924",
+        "VolumeID": "vol-0b832e0d022320dd6",
+        "Description": "texai-backup-18-08-2022",
+        "SizeGiB": 100,
+        "StartTime": "2022-08-18T14:50:15.244000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0fa76850343ed4387",
+        "VolumeID": "vol-0b832e0d022320dd6",
+        "Description": "Texai-Recovered_Reworked_Snapshot(Updated as on 8-8-2022)",
+        "SizeGiB": 100,
+        "StartTime": "2022-08-08T10:08:33.970000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0dc5d8a6f06e7e4ce",
+        "VolumeID": "vol-0bdda82b80b5531d9",
+        "Description": "Created by CreateImage(i-0d1e58ce6bcd4e0ea) for ami-04035c14003c2f11a",
+        "SizeGiB": 30,
+        "StartTime": "2024-03-21T09:35:57.655000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0757aa3e4dba4d701",
+        "VolumeID": "vol-0bdda82b80b5531d9",
+        "Description": "Created by CreateImage(i-0d1e58ce6bcd4e0ea) for ami-02ee7e4b009de3064",
+        "SizeGiB": 30,
+        "StartTime": "2024-03-21T04:09:35.690000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0a2c05709a7e3ac82",
+        "VolumeID": "vol-0bdda82b80b5531d9",
+        "Description": "Created by CreateImage(i-0d1e58ce6bcd4e0ea) for ami-0228649369f53ed65",
+        "SizeGiB": 30,
+        "StartTime": "2024-03-12T05:23:31.155000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0e6f8d77d92899c11",
+        "VolumeID": "vol-0bdda82b80b5531d9",
+        "Description": "Created by CreateImage(i-0d1e58ce6bcd4e0ea) for ami-02adf7cc61fb097d6",
+        "SizeGiB": 30,
+        "StartTime": "2024-03-12T05:13:44.464000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0b3fcaa1ea6db082d",
+        "VolumeID": "vol-0bdda82b80b5531d9",
+        "Description": "Created by CreateImage(i-0d1e58ce6bcd4e0ea) for ami-0cdabe1e9e2b407cc",
+        "SizeGiB": 30,
+        "StartTime": "2024-03-12T05:02:17+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-02460efb99138fb8b",
+        "VolumeID": "vol-0bdda82b80b5531d9",
+        "Description": "Created by CreateImage(i-0d1e58ce6bcd4e0ea) for ami-0dc599873e06e9028",
+        "SizeGiB": 30,
+        "StartTime": "2024-03-12T05:00:42.189000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0f0c24e56b0b46b7e",
+        "VolumeID": "vol-0bdda82b80b5531d9",
+        "Description": "Created by CreateImage(i-0d1e58ce6bcd4e0ea) for ami-0feab0dae5b98c8c2",
+        "SizeGiB": 30,
+        "StartTime": "2024-03-11T07:16:57.647000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0b1e5f38108a7fa4e",
+        "VolumeID": "vol-06dd4bcac734911c9",
+        "Description": "Created by CreateImage(i-03a95c0bf7d92e02a) for ami-0a93cd0adcd86995f",
+        "SizeGiB": 10,
+        "StartTime": "2024-03-05T13:27:01.611000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-064166710c9630850",
+        "VolumeID": "vol-0eae00812eeb3d09a",
+        "Description": "Created by CreateImage(i-02d5b221f0808857a) for ami-005fd59b5d0d9acf9",
+        "SizeGiB": 100,
+        "StartTime": "2022-12-23T11:48:20.658000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0d9be7859da49a632",
+        "VolumeID": "vol-0a390ac5f90832a8a",
+        "Description": "Created by CreateImage(i-06bb1ce0355c1af1f) for ami-0bffb9c977634a66b",
+        "SizeGiB": 100,
+        "StartTime": "2021-09-13T14:53:19.022000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0f0e952ab151195b6",
+        "VolumeID": "vol-0bdda82b80b5531d9",
+        "Description": "Created by CreateImage(i-0d1e58ce6bcd4e0ea) for ami-07062da213a593507",
+        "SizeGiB": 30,
+        "StartTime": "2024-03-12T05:34:25.657000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-09e31b049c8e7805c",
+        "VolumeID": "vol-0bdda82b80b5531d9",
+        "Description": "Created by CreateImage(i-0d1e58ce6bcd4e0ea) for ami-0e42a8c3ea8eaeeaa",
+        "SizeGiB": 30,
+        "StartTime": "2024-03-05T03:12:16.876000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-046b9ca8791ccb406",
+        "VolumeID": "vol-0bdda82b80b5531d9",
+        "Description": "Created by CreateImage(i-0d1e58ce6bcd4e0ea) for ami-053b8242cf9252a78",
+        "SizeGiB": 30,
+        "StartTime": "2024-03-04T16:20:37.267000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0dd01b4ddf2406f22",
+        "VolumeID": "vol-029d04a0e484e4492",
+        "Description": "Created by CreateImage(i-08482a0aab34dfa8b) for ami-0a3292fc42632b0e0",
+        "SizeGiB": 30,
+        "StartTime": "2024-03-08T11:20:07.966000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0ba3be41c0e4fcee4",
+        "VolumeID": "vol-0692924444d1d5243",
+        "Description": "Tex-ai-Disk",
+        "SizeGiB": 100,
+        "StartTime": "2022-07-29T11:36:17.632000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-007acf4dc34d5b4b7",
+        "VolumeID": "vol-0692924444d1d5243",
+        "Description": "Created by CreateImage(i-0a424cf5836dea12e) for ami-0889fa7649c9ce66c",
+        "SizeGiB": 100,
+        "StartTime": "2022-07-29T09:05:17.577000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0497d15436964b0c2",
+        "VolumeID": "vol-0692924444d1d5243",
+        "Description": "Tex.AI - Snapshot (9-3-2022)",
+        "SizeGiB": 100,
+        "StartTime": "2022-03-09T04:45:29.159000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-0398ca7490110dfc8",
+        "VolumeID": "vol-0692924444d1d5243",
+        "Description": "Created by CreateImage(i-0a424cf5836dea12e) for ami-05c10c929fe093a3d",
+        "SizeGiB": 100,
+        "StartTime": "2021-12-15T09:15:38.154000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-09e0d762e52720e3b",
+        "VolumeID": "vol-0f4c7450da1901442",
+        "Description": "Created by CreateImage(i-0fd8e5dc6453028bd) for ami-0a8b7454197935068",
+        "SizeGiB": 10,
+        "StartTime": "2024-03-05T13:20:48.690000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "ap-south-1",
+        "SnapshotID": "snap-03852bc2e1448a096",
+        "VolumeID": "vol-03e989fac583e01db",
+        "Description": "SK-reworked_texai_Snapshot",
+        "SizeGiB": 100,
+        "StartTime": "2022-07-29T15:04:44.194000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "us-west-2",
+        "SnapshotID": "snap-05839f9e5b4855de2",
+        "VolumeID": "vol-07c1ca14af049dfac",
+        "Description": "Created by CreateImage(i-09367f385b47c7f78) for ami-0e9df4473b127e0b6",
+        "SizeGiB": 75,
+        "StartTime": "2024-03-12T04:18:54.427000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "us-west-2",
+        "SnapshotID": "snap-078aba11ae11c72d9",
+        "VolumeID": "vol-07c1ca14af049dfac",
+        "Description": "Created by CreateImage(i-09367f385b47c7f78) for ami-0a56245a913bae05b",
+        "SizeGiB": 75,
+        "StartTime": "2024-03-12T04:21:10.586000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "us-west-2",
+        "SnapshotID": "snap-0e1c1e2957cda32c5",
+        "VolumeID": "vol-07c1ca14af049dfac",
+        "Description": "Created by CreateImage(i-09367f385b47c7f78) for ami-098956af8b0ccffa4",
+        "SizeGiB": 75,
+        "StartTime": "2024-03-12T04:08:23.997000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "us-west-2",
+        "SnapshotID": "snap-0feddaf06a3f15feb",
+        "VolumeID": "vol-07c1ca14af049dfac",
+        "Description": "Created by CreateImage(i-09367f385b47c7f78) for ami-08ff969d14dae3ede",
+        "SizeGiB": 75,
+        "StartTime": "2024-03-12T04:04:29.585000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "us-west-2",
+        "SnapshotID": "snap-0f483037bfc8b603f",
+        "VolumeID": "vol-07c1ca14af049dfac",
+        "Description": "Created by CreateImage(i-09367f385b47c7f78) for ami-094ee2c4a66b1dc94",
+        "SizeGiB": 75,
+        "StartTime": "2024-03-05T03:42:59.172000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    },
+    {
+        "Region": "us-west-2",
+        "SnapshotID": "snap-03fb84b91553de15a",
+        "VolumeID": "vol-07c1ca14af049dfac",
+        "Description": "Created by CreateImage(i-09367f385b47c7f78) for ami-0741bb9e9acff16d9",
+        "SizeGiB": 50,
+        "StartTime": "2024-02-16T07:32:23.125000+00:00",
+        "Progress": "100%",
+        "OwnerID": "013073235788"
+    }
+]

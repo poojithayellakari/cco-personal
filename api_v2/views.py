@@ -1,6 +1,8 @@
 
+
 from django.http import JsonResponse
 from .models import CustomUser
+from django.utils.timezone import make_aware
 from .serializers import CustomUserSerializer, LoginSerializer, CustomTokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenVerifyView
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -270,7 +272,6 @@ class AWSVpcDetails(APIView):
             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
 
 
-
 class AWSAllServiceCost(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
@@ -291,39 +292,43 @@ class AWSAllServiceCost(APIView):
             )
             ce_client = session.client('ce')
 
-            # Get parameters from the request\
+            time_range = request.GET.get('time-range')
+            financial_year = request.GET.get('financial-year')
 
-            end_time = datetime.utcnow()
-            time_range=request.GET.get('time-range')
-            # Calculate start time based on the time range provided by the user
-            if time_range == "1 Week":
-                start_time = end_time - timedelta(weeks=1)
-            elif time_range == "15 Days":
-                start_time = end_time - timedelta(days=15)
-            elif time_range == "1 Month":
-                start_time = end_time - timedelta(weeks=4 * 1)
-            elif time_range == "3 Months":
-                start_time = end_time - timedelta(weeks=4 * 3)
-            elif time_range == "6 Months":
-                start_time = end_time - timedelta(weeks=4 * 6)
-            else:
-                # Handle the case when units_str is not provided or not a digit
-                return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+            if not financial_year:
+                return JsonResponse({'error': 'Financial year must be specified'}, status=400)
+            
+            try:
+                fy_start_year = int(financial_year.split('-')[0])
+                fy_end_year = fy_start_year + 1
+                current_date = datetime.utcnow()
 
-            filter_ec2 = { 
-                'Dimensions': {
-                    'Key': 'SERVICE',
-                    'Values': ["Amazon Elastic Compute Cloud - Compute","Amazon Elastic Container Service","Amazon Simple Storage Service","Amazon Elastic Container Registry","AWS Lambda","Amazon Relational Database Service","AWS Secrets Manager","AWS WAF"]
-                }
-            }
+                # Determine the date range based on the specified quarter
+                if time_range == "Q1":
+                    start_time = datetime(fy_start_year, 4, 1)
+                    end_time = datetime(fy_start_year, 7, 31)
+                elif time_range == "Q2":
+                    start_time = datetime(fy_start_year, 8, 1)
+                    end_time = datetime(fy_start_year, 11, 30)
+                elif time_range == "Q3":
+                    start_time = datetime(fy_start_year, 12, 1)
+                    end_time = datetime(fy_end_year, 3, 31)
+                else:
+                    return JsonResponse({'error': 'Invalid time range specified'}, status=400)
+
+                # Adjust end_time to the current date if it exceeds it
+                if end_time > current_date:
+                    end_time = current_date
+
+            except ValueError:
+                return JsonResponse({'error': 'Invalid financial year specified'}, status=400)
 
             response = ce_client.get_cost_and_usage(
                 TimePeriod={
                     'Start': start_time.strftime('%Y-%m-%d'),
-                    'End': end_time.strftime('%Y-%m-%d'),
+                    'End': (end_time + timedelta(days=1)).strftime('%Y-%m-%d')  # Increment end_time by 1 day to include the end date
                 },
-                Granularity='DAILY',
-                Filter= filter_ec2,
+                Granularity='MONTHLY',
                 GroupBy=[
                     {
                         'Type': 'DIMENSION',
@@ -334,24 +339,174 @@ class AWSAllServiceCost(APIView):
             )
             
             data = response['ResultsByTime']
-            # return Response(response)
             cost_info = {}
+
             for result in data:
+                time_period = result['TimePeriod']
+                start = time_period['Start']
+                month = datetime.strptime(start, '%Y-%m-%d').strftime('%Y-%m')
                 cost_group = result['Groups']
-                print(cost_group)
+                total_monthly_cost = Decimal(0.0)
                 for cost in cost_group:
-                    resource = cost['Keys'][0]
-                    daily_cost = round(float(cost['Metrics']['UnblendedCost']['Amount']), 5)
-                    print(cost_info)
-                    if resource not in cost_info:
-                        cost_info[resource] = Decimal(daily_cost)
-                    else:
-                        cost_info[resource] += Decimal(daily_cost)
-            return Response(cost_info)
+                    monthly_cost = round(float(cost['Metrics']['UnblendedCost']['Amount']), 5)
+                    total_monthly_cost += Decimal(monthly_cost)
+                cost_info[month] = total_monthly_cost
+
+            # Convert the monthly costs from scientific notation to normal decimal notation
+            for month, cost in cost_info.items():
+                cost_info[month] = format(cost, '.20f')
+
+            return Response({
+                'monthly_breakdown': cost_info
+            })
             
         except Exception as e:
-            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+            return JsonResponse({"error": f"An error occurred: {e}"}, content_type='application/json', status=500)
 
+class AvailableServices(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+ 
+    def get(self, request, *args, **kwargs):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+           
+            # Check if AWS credentials are configured
+            if not access_key or not secret_key:    
+                return Response({"error": "AWS credentials are not configured"}, status=400)
+           
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                region_name='ap-south-1',
+            )
+            ce_client = session.client('resourcegroupstaggingapi')
+ 
+            resources = []
+            pagination_token = ''
+           
+            while True:
+                response = ce_client.get_resources(
+                    PaginationToken=pagination_token,
+                    ResourcesPerPage=50  # Adjust as needed
+                )
+               
+                resources.extend(response.get('ResourceTagMappingList', []))
+               
+                pagination_token = response.get('PaginationToken', '')
+                if not pagination_token:
+                    break
+ 
+            # Format the response data in a Postman-like style
+            response_data = []
+            for resource in resources:
+                resource_arn = resource['ResourceARN']
+                tags = resource['Tags']
+                response_data.append({
+                    "id": resource_arn,
+                    "name": resource_arn,
+                    "type": "AWS Resource",
+                    "attributes": {
+                        "ResourceARN": resource_arn,
+                        "Tags": tags
+                    }
+                })
+ 
+            return Response(response_data)
+        except Exception as e:
+            return Response({"error": f"An error occurred: {e}"}, status=500)
+        
+class Ec2_instance_usage_type(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+ 
+    def get_instance_usage_type(self, instance):
+        instance_lifecycle = instance.get('InstanceLifecycle')
+        # instance_state = instance.get('State', {}).get('Name')
+        if instance_lifecycle:
+            return instance_lifecycle
+        else:
+            return "On-Demand"
+ 
+    def get(self, request, *args, **kwargs):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+           
+            # Check if AWS credentials are configured
+            if not access_key or not secret_key:
+                return Response({"error": "AWS credentials are not configured"}, status=400)
+           
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                region_name='ap-south-1',
+            )
+            client = session.client('ec2')
+           
+            # Describe instances
+            response = client.describe_instances()
+           
+            instance_info = {}
+           
+            for reservation in response.get('Reservations', []):
+                for instance in reservation.get('Instances', []):
+                    instance_id = instance.get('InstanceId')
+                    instance_type = instance.get('InstanceType', 'Unknown')
+                    usage_type = self.get_instance_usage_type(instance)
+                   
+                    instance_info[instance_id] = {
+                        'InstanceType': instance_type,
+                        'UsageType': usage_type
+                    }
+           
+            return Response(instance_info, status=200)
+       
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+class SES_Details(APIView):
+        authentication_classes = [JWTAuthentication]
+        permission_classes = [AllowAny]
+ 
+        def get(self, request, *args, **kwargs):
+            try:
+                access_key = settings.AWS_ACCESS_KEY_ID
+                secret_key = settings.AWS_SECRET_ACCESS_KEY
+               
+                # Check if AWS credentials are configured
+                if not access_key or not secret_key:    
+                    return Response({"error": "AWS credentials are not configured"}, status=400)
+               
+                session = boto3.Session(
+                    aws_access_key_id=access_key,
+                    aws_secret_access_key=secret_key,
+                    region_name='ap-south-1',
+                )
+                client = session.client('ses')
+                ses_details = {}
+ 
+                # Get Send Quota
+                send_quota_response = client.get_send_quota()
+                ses_details["SendQuota"] = send_quota_response
+ 
+                # Get Send Statistics
+                send_statistics_response = client.get_send_statistics()
+                ses_details["SendStatistics"] = send_statistics_response['SendDataPoints']
+ 
+                # List Verified Email Identities
+                identities_response = client.list_identities(IdentityType='EmailAddress')
+                ses_details["VerifiedEmailAddresses"] = identities_response['Identities']
+ 
+                # List Verified Domains
+                domains_response = client.list_identities(IdentityType='Domain')
+                ses_details["VerifiedDomains"] = domains_response['Identities']
+ 
+                return JsonResponse(ses_details, safe=False)
+ 
+            except Exception as e:
+                return Response({"error": f"An error occurred: {e}"}, status=500)
+            
 class CheckAPI(APIView):
     # authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
@@ -491,7 +646,14 @@ class EC2_Memory_utilization(APIView):
                         launch_time = instance['LaunchTime']
 
                         last_activity_time = self.get_last_activity_time(state, launch_time)
+                        last_activity_time_format = last_activity_time.replace(tzinfo=timezone.utc)
+                        # Get the current time in UTC.
+                        current_time = datetime.now(timezone.utc)
+                        inactive_duration= current_time - last_activity_time_format
+                        inactive_duration_days = inactive_duration.total_seconds() / (24 * 3600)
 
+                    # Convert the timedelta object to a number of days (rounded to the nearest integer).
+                        inactive_days = round(inactive_duration_days)
                         cloudwatch_client = session.client('cloudwatch', region_name=region_name)
 
                         end_time = datetime.utcnow()
@@ -620,6 +782,7 @@ class EC2_Memory_utilization(APIView):
                                             'average_utilization': average_value,
                                             'region': region_name,
                                             'last_activity_time': last_activity_time,
+                                            'Inactive': inactive_days
                                         })
 
                         if 'MetricDataResults' in cpu_response:
@@ -637,6 +800,7 @@ class EC2_Memory_utilization(APIView):
                                             'average_utilization': average_value,
                                             'region': region_name,
                                             'last_activity_time': last_activity_time,
+                                            'Inactive': inactive_days
                                         })
                         
                         if 'MetricDataResults' in disk_response:
@@ -654,6 +818,7 @@ class EC2_Memory_utilization(APIView):
                                             'average_utilization': average_value,
                                             'region': region_name,
                                             'last_activity_time': last_activity_time,
+                                            'Inactive': inactive_days
                                         })
 
             all_utilization_info.sort(key=lambda x: (x['state'], x['last_activity_time'] or datetime.min))
@@ -1409,6 +1574,7 @@ class Send_cost_Email(APIView):
                 return JsonResponse({'error': 'Recipient email address not provided'}, status=400)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
+        
 class Get_VPCData(APIView):
     authentication_classes=[JWTAuthentication]
     permission_classes=[AllowAny]
@@ -1841,7 +2007,7 @@ class Get_EBS_Data(APIView):
                         Iops = volume.get('Iops', None)  # Handle the case where 'Iops' may not be present
 
                         # Initialize a dictionary to store metrics for this volume
-                        volume_metrics = {'VolumeId': volume_id, 'VolumeType': volume_type, 'SizeGB': size_gb, 'Iops': Iops}
+                        volume_metrics = {'VolumeId': volume_id, 'VolumeType': volume_type, 'SizeGB': size_gb, 'Iops': Iops,'attached':False}
 
                         # Retrieve and add I/O metrics for this volume
                         for metric_name in metric_names:
@@ -1872,6 +2038,8 @@ class Get_EBS_Data(APIView):
                                 # Assuming a volume is attached to one instance (for simplicity)
                                 instance_id = attachments[0]['InstanceId']
                                 volume_metrics['InstanceId'] = instance_id
+                                volume_metrics['attached']= True
+                        
 
                         # Append the volume_metrics dictionary to the all_volume_data list
                         all_volume_data.append(volume_metrics)
@@ -2060,6 +2228,7 @@ class Get_Detailed_usage_Data(APIView):
             session = boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
             )
     # Initialize AWS clients
             ssm_client = session.client('ssm')
@@ -2100,6 +2269,7 @@ class Get_Detailed_usage_Data(APIView):
             return response
         except Exception as e:
                 return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
+        
 class Get_Elastic_Ip(APIView):
     authentication_classes=[JWTAuthentication]
     permission_classes=[AllowAny]
@@ -2457,892 +2627,1511 @@ class DecimalEncoder(json.JSONEncoder):
             return str(obj)
         return super(DecimalEncoder, self).default(obj)
     
-class EC2_instance_cost_data(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
+# class EC2_instance_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
     
-    def get(self, request, *args, **kwargs):
-        try:
-            access_key = settings.AWS_ACCESS_KEY_ID
-            secret_key = settings.AWS_SECRET_ACCESS_KEY
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
             
-            # Check if AWS credentials are configured
-            if not access_key or not secret_key:
-                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
 
-            # Configure the AWS client with the stored credentials
-            session = boto3.Session(
-                aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-            )
-            ce_client = session.client('ce')
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
 
-            # Get parameters from the request
-            units_str = request.GET.get("units")
-            time_range = request.GET.get("time-range")
+#             # Get parameters from the request
+#             units_str = request.GET.get("units")
+#             time_range = request.GET.get("time-range")
 
-            end_time = datetime.utcnow()
-            time_range=request.GET.get('time-range')
-                            # Calculate start time based on the time range provided by the user
-            if time_range == "1 Week":
-                start_time = end_time - timedelta(weeks=1)
-            elif time_range == "15 Days":
-                start_time = end_time - timedelta(days=15)
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
             
-            elif time_range == "1 Month":
-                start_time = end_time - timedelta(weeks=4 * 1)
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
             
-            elif time_range == "3 Months":
-                start_time = end_time - timedelta(weeks=4 * 3)
-            elif time_range == "6 Months":
-                start_time = end_time - timedelta(weeks=4 * 6)
-            else:
-                # Handle the case when units_str is not provided or not a digit
-                return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
+#             else:
+#                 # Handle the case when units_str is not provided or not a digit
+#                 return JsonResponse({'error': 'Invalid units parameter'}, status=400)
 
-            filter_ec2 = {
-                'Dimensions': {
-                    'Key': 'SERVICE',
-                    'Values': ['Amazon Elastic Compute Cloud - Compute']
-                }
-            }
+#             filter_ec2 = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': ['Amazon Elastic Compute Cloud - Compute']
+#                 }
+#             }
 
-            response = ce_client.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_time.strftime('%Y-%m-%d'),
-                    'End': end_time.strftime('%Y-%m-%d'),
-                },
-                Granularity='DAILY',
-                Filter=filter_ec2,
-                Metrics=['UnblendedCost']
-            )
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_ec2,
+#                 Metrics=['UnblendedCost']
+#             )
 
-            data = response['ResultsByTime']
+#             data = response['ResultsByTime']
 
-            monthly_costs = {}
+#             monthly_costs = {}
 
-            for result in data:
-                start_date = result['TimePeriod']['Start']
-                month_key = start_date[:7]
-                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
 
-                if month_key not in monthly_costs:
-                    monthly_costs[month_key] = Decimal(0)
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
 
-                monthly_costs[month_key] += Decimal(daily_cost)
+#                 monthly_costs[month_key] += Decimal(daily_cost)
 
-            total_cost = round(sum(monthly_costs.values()), 5)
-            average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
 
-            # Round monthly costs to about 5 decimals
-            for key, value in monthly_costs.items():
-                monthly_costs[key] = round(value, 5)
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
 
-            response_data = json.dumps({
-                'total_cost': total_cost,
-                'average_monthly_cost': average_monthly_cost,
-                'monthly_breakdown': monthly_costs,
-            }, cls=DecimalEncoder)
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
             
-            response = HttpResponse(response_data, content_type='application/json')
-            return response
-        except Exception as e:
-            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
-class S3_cost_data(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+# class S3_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
 
-    def get(self, request, *args, **kwargs):
-        try:
-            access_key = settings.AWS_ACCESS_KEY_ID
-            secret_key = settings.AWS_SECRET_ACCESS_KEY
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
             
-            # Check if AWS credentials are configured
-            if not access_key or not secret_key:
-                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
 
-            # Configure the AWS client with the stored credentials
-            session = boto3.Session(
-                aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-            )
-            ce_client = session.client('ce')
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
 
-            # Get parameters from the request
-            end_time = datetime.utcnow()
-            time_range=request.GET.get('time-range')
-                            # Calculate start time based on the time range provided by the user
-            if time_range == "1 Week":
-                start_time = end_time - timedelta(weeks=1)
-            elif time_range == "15 Days":
-                start_time = end_time - timedelta(days=15)
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
             
-            elif time_range == "1 Month":
-                start_time = end_time - timedelta(weeks=4 * 1)
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
             
-            elif time_range == "3 Months":
-                start_time = end_time - timedelta(weeks=4 * 3)
-            elif time_range == "6 Months":
-                start_time = end_time - timedelta(weeks=4 * 6)
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
 
-            filter_s3 = {
-                'Dimensions': {
-                    'Key': 'SERVICE',
-                    'Values': ['Amazon Simple Storage Service']
-                }
-            }
+#             filter_s3 = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': ['Amazon Simple Storage Service']
+#                 }
+#             }
 
-            response = ce_client.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_time.strftime('%Y-%m-%d'),
-                    'End': end_time.strftime('%Y-%m-%d'),
-                },
-                Granularity='DAILY',
-                Filter=filter_s3,
-                Metrics=['UnblendedCost']
-            )
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_s3,
+#                 Metrics=['UnblendedCost']
+#             )
 
-            data = response['ResultsByTime']
+#             data = response['ResultsByTime']
 
-            monthly_costs = {}
+#             monthly_costs = {}
 
-            for result in data:
-                start_date = result['TimePeriod']['Start']
-                month_key = start_date[:7]
-                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
 
-                if month_key not in monthly_costs:
-                    monthly_costs[month_key] = Decimal(0)
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
 
-                monthly_costs[month_key] += Decimal(daily_cost)
+#                 monthly_costs[month_key] += Decimal(daily_cost)
 
-            total_cost = round(sum(monthly_costs.values()), 5)
-            average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
 
-            # Round monthly costs to about 5 decimals
-            for key, value in monthly_costs.items():
-                monthly_costs[key] = round(value, 5)
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
 
-            response_data = json.dumps({
-                'total_cost': total_cost,
-                'average_monthly_cost': average_monthly_cost,
-                'monthly_breakdown': monthly_costs,
-            }, cls=DecimalEncoder)
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
 
-            response = HttpResponse(response_data, content_type='application/json')
-            return response
-        except Exception as e:
-            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
-class ECR_cost_data(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
-
-    def get(self, request, *args, **kwargs):
-        try:
-            access_key = settings.AWS_ACCESS_KEY_ID
-            secret_key = settings.AWS_SECRET_ACCESS_KEY
-            
-            # Check if AWS credentials are configured
-            if not access_key or not secret_key:
-                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
-
-            # Configure the AWS client with the stored credentials
-            session = boto3.Session(
-                aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-            )
-            ce_client = session.client('ce')
-
-            # Get parameters from the request
-            end_time = datetime.utcnow()
-            time_range=request.GET.get('time-range')
-                            # Calculate start time based on the time range provided by the user
-            if time_range == "1 Week":
-                start_time = end_time - timedelta(weeks=1)
-            elif time_range == "15 Days":
-                start_time = end_time - timedelta(days=15)
-            
-            elif time_range == "1 Month":
-                start_time = end_time - timedelta(weeks=4 * 1)
-            
-            elif time_range == "3 Months":
-                start_time = end_time - timedelta(weeks=4 * 3)
-            elif time_range == "6 Months":
-                start_time = end_time - timedelta(weeks=4 * 6)
-            else:
-                # Handle the case when units_str is not provided or not a digit
-                return JsonResponse({'error': 'Invalid units parameter'}, status=400)
-
-            filter_ecr = {
-                'Dimensions': {
-                    'Key': 'SERVICE',
-                    'Values': ['Amazon Elastic Container Registry']
-                }
-            }
-
-            response = ce_client.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_time.strftime('%Y-%m-%d'),
-                    'End': end_time.strftime('%Y-%m-%d'),
-                },
-                Granularity='DAILY',
-                Filter=filter_ecr,
-                Metrics=['UnblendedCost']
-            )
-
-            data = response['ResultsByTime']
-
-            monthly_costs = {}
-
-            for result in data:
-                start_date = result['TimePeriod']['Start']
-                month_key = start_date[:7]
-                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
-
-                if month_key not in monthly_costs:
-                    monthly_costs[month_key] = Decimal(0)
-
-                monthly_costs[month_key] += Decimal(daily_cost)
-
-            total_cost = round(sum(monthly_costs.values()), 5)
-            average_monthly_cost = round(total_cost / len(monthly_costs), 5)
-
-            # Round monthly costs to about 5 decimals
-            for key, value in monthly_costs.items():
-                monthly_costs[key] = round(value, 5)
-
-            response_data = json.dumps({
-                'total_cost': total_cost,
-                'average_monthly_cost': average_monthly_cost,
-                'monthly_breakdown': monthly_costs,
-            }, cls=DecimalEncoder)
-
-            response = HttpResponse(response_data, content_type='application/json')
-            return response
-        except Exception as e:
-            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
-
-class Lambda_cost_data(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
-
-    def get(self, request, *args, **kwargs):
-        try:
-            access_key = settings.AWS_ACCESS_KEY_ID
-            secret_key = settings.AWS_SECRET_ACCESS_KEY
-            
-            # Check if AWS credentials are configured
-            if not access_key or not secret_key:
-                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
-
-            # Configure the AWS client with the stored credentials
-            session = boto3.Session(
-                aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-            )
-            ce_client = session.client('ce')
-
-            # Get parameters from the request
-            end_time = datetime.utcnow()
-            time_range=request.GET.get('time-range')
-                            # Calculate start time based on the time range provided by the user
-            if time_range == "1 Week":
-                start_time = end_time - timedelta(weeks=1)
-            elif time_range == "15 Days":
-                start_time = end_time - timedelta(days=15)
-            
-            elif time_range == "1 Month":
-                start_time = end_time - timedelta(weeks=4 * 1)
-            
-            elif time_range == "3 Months":
-                start_time = end_time - timedelta(weeks=4 * 3)
-            elif time_range == "6 Months":
-                start_time = end_time - timedelta(weeks=4 * 6)
-            else:
-                # Handle the case when units_str is not provided or not a digit
-                return JsonResponse({'error': 'Invalid units parameter'}, status=400)
-
-            filter_lambda = {
-                'Dimensions': {
-                    'Key': 'SERVICE',
-                    'Values': ['AWS Lambda']
-                }
-            }
-
-            response = ce_client.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_time.strftime('%Y-%m-%d'),
-                    'End': end_time.strftime('%Y-%m-%d'),
-                },
-                Granularity='DAILY',
-                Filter=filter_lambda,
-                Metrics=['UnblendedCost']
-            )
-
-            data = response['ResultsByTime']
-
-            monthly_costs = {}
-
-            for result in data:
-                start_date = result['TimePeriod']['Start']
-                month_key = start_date[:7]
-                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
-
-                if month_key not in monthly_costs:
-                    monthly_costs[month_key] = Decimal(0)
-
-                monthly_costs[month_key] += Decimal(daily_cost)
-
-            total_cost = round(sum(monthly_costs.values()), 5)
-            average_monthly_cost = round(total_cost / len(monthly_costs), 5)
-
-            # Round monthly costs to about 5 decimals
-            for key, value in monthly_costs.items():
-                monthly_costs[key] = round(value, 5)
-
-            response_data = json.dumps({
-                'total_cost': total_cost,
-                'average_monthly_cost': average_monthly_cost,
-                'monthly_breakdown': monthly_costs,
-            }, cls=DecimalEncoder)
-
-            response = HttpResponse(response_data, content_type='application/json')
-            return response
-        except Exception as e:
-            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
         
-class ECS_cost_data(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
+# class VPC_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
+#     services={
+#         'vpc':['Amazon Virtual Private Cloud'],
+#         's3':['Amazon Simple Storage Service']
+#     }
 
-    def get(self, request, *args, **kwargs):
-        try:
-            access_key = settings.AWS_ACCESS_KEY_ID
-            secret_key = settings.AWS_SECRET_ACCESS_KEY
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
             
-            # Check if AWS credentials are configured
-            if not access_key or not secret_key:
-                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
-
-            # Configure the AWS client with the stored credentials
-            session = boto3.Session(
-                aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-            )
-            ce_client = session.client('ce')
-
-            # Get parameters from the request
-            end_time = datetime.utcnow()
-            time_range=request.GET.get('time-range')
-                            # Calculate start time based on the time range provided by the user
-            if time_range == "1 Week":
-                start_time = end_time - timedelta(weeks=1)
-            elif time_range == "15 Days":
-                start_time = end_time - timedelta(days=15)
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
             
-            elif time_range == "1 Month":
-                start_time = end_time - timedelta(weeks=4 * 1)
+#             service=request.GET.get('service')
+#             if service not in self.services:
+#                 return JsonResponse({'error': 'service not available'}, status=400)
             
-            elif time_range == "3 Months":
-                start_time = end_time - timedelta(weeks=4 * 3)
-            elif time_range == "6 Months":
-                start_time = end_time - timedelta(weeks=4 * 6)
-            else:
-                # Handle the case when units_str is not provided or not a digit
-                return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
 
-            filter_ecs = {
-                'Dimensions': {
-                    'Key': 'SERVICE',
-                    'Values': ['Amazon Elastic Container Service']
-                }
-            }
-
-            response = ce_client.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_time.strftime('%Y-%m-%d'),
-                    'End': end_time.strftime('%Y-%m-%d'),
-                },
-                Granularity='DAILY',
-                Filter=filter_ecs,
-                Metrics=['UnblendedCost']
-            )
-
-            data = response['ResultsByTime']
-
-            monthly_costs = {}
-
-            for result in data:
-                start_date = result['TimePeriod']['Start']
-                month_key = start_date[:7]
-                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
-
-                if month_key not in monthly_costs:
-                    monthly_costs[month_key] = Decimal(0)
-
-                monthly_costs[month_key] += Decimal(daily_cost)
-
-            total_cost = round(sum(monthly_costs.values()), 5)
-            average_monthly_cost = round(total_cost / len(monthly_costs), 5)
-
-            # Round monthly costs to about 5 decimals
-            for key, value in monthly_costs.items():
-                monthly_costs[key] = round(value, 5)
-
-            response_data = json.dumps({
-                'total_cost': total_cost,
-                'average_monthly_cost': average_monthly_cost,
-                'monthly_breakdown': monthly_costs,
-            }, cls=DecimalEncoder)
-
-            response = HttpResponse(response_data, content_type='application/json')
-            return response
-        except Exception as e:
-            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
-
-
-class WAF_cost_data(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
-
-    def get(self, request, *args, **kwargs):
-        try:
-            access_key = settings.AWS_ACCESS_KEY_ID
-            secret_key = settings.AWS_SECRET_ACCESS_KEY
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
             
-            # Check if AWS credentials are configured
-            if not access_key or not secret_key:
-                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
-
-            # Configure the AWS client with the stored credentials
-            session = boto3.Session(
-                aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-            )
-            ce_client = session.client('ce')
-
-            # Get parameters from the request
-            end_time = datetime.utcnow()
-            time_range=request.GET.get('time-range')
-                            # Calculate start time based on the time range provided by the user
-            if time_range == "1 Week":
-                start_time = end_time - timedelta(weeks=1)
-            elif time_range == "15 Days":
-                start_time = end_time - timedelta(days=15)
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
             
-            elif time_range == "1 Month":
-                start_time = end_time - timedelta(weeks=4 * 1)
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
+
             
-            elif time_range == "3 Months":
-                start_time = end_time - timedelta(weeks=4 * 3)
-            elif time_range == "6 Months":
-                start_time = end_time - timedelta(weeks=4 * 6)
-            else:
-                # Handle the case when units_str is not provided or not a digit
-                return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+#             filter_vpc = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': self.services[service]
+#                 }
+#             }
+        
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_vpc,
+#                 Metrics=['UnblendedCost']
+#             )
 
-            filter_waf = {
-                'Dimensions': {
-                    'Key': 'SERVICE',
-                    'Values': ['AWS WAF']
-                }
-            }
+#             data = response['ResultsByTime']
 
-            response = ce_client.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_time.strftime('%Y-%m-%d'),
-                    'End': end_time.strftime('%Y-%m-%d'),
-                },
-                Granularity='DAILY',
-                Filter=filter_waf,
-                Metrics=['UnblendedCost']
-            )
+#             monthly_costs = {}
 
-            data = response['ResultsByTime']
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
 
-            monthly_costs = {}
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
 
-            for result in data:
-                start_date = result['TimePeriod']['Start']
-                month_key = start_date[:7]
-                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+#                 monthly_costs[month_key] += Decimal(daily_cost)
 
-                if month_key not in monthly_costs:
-                    monthly_costs[month_key] = Decimal(0)
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
 
-                monthly_costs[month_key] += Decimal(daily_cost)
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
 
-            total_cost = round(sum(monthly_costs.values()), 5)
-            average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
 
-            # Round monthly costs to about 5 decimals
-            for key, value in monthly_costs.items():
-                monthly_costs[key] = round(value, 5)
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)        
 
-            response_data = json.dumps({
-                'total_cost': total_cost,
-                'average_monthly_cost': average_monthly_cost,
-                'monthly_breakdown': monthly_costs,
-            }, cls=DecimalEncoder)
+# class LoadBalancer_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
 
-            response = HttpResponse(response_data, content_type='application/json')
-            return response
-        except Exception as e:
-            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
-class APIGateway_cost_data(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
-
-    def get(self, request, *args, **kwargs):
-        try:
-            access_key = settings.AWS_ACCESS_KEY_ID
-            secret_key = settings.AWS_SECRET_ACCESS_KEY
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
             
-            # Check if AWS credentials are configured
-            if not access_key or not secret_key:
-                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
 
-            # Configure the AWS client with the stored credentials
-            session = boto3.Session(
-                aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-            )
-            ce_client = session.client('ce')
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
 
-            # Get parameters from the request
-            end_time = datetime.utcnow()
-            time_range=request.GET.get('time-range')
-                            # Calculate start time based on the time range provided by the user
-            if time_range == "1 Week":
-                start_time = end_time - timedelta(weeks=1)
-            elif time_range == "15 Days":
-                start_time = end_time - timedelta(days=15)
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
             
-            elif time_range == "1 Month":
-                start_time = end_time - timedelta(weeks=4 * 1)
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
             
-            elif time_range == "3 Months":
-                start_time = end_time - timedelta(weeks=4 * 3)
-            elif time_range == "6 Months":
-                start_time = end_time - timedelta(weeks=4 * 6)
-            else:
-                # Handle the case when units_str is not provided or not a digit
-                return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
 
-            filter_api_gateway = {
-                'Dimensions': {
-                    'Key': 'SERVICE',
-                    'Values': ['AmazonApiGateway']
-                }
-            }
+#             filter_load_balancers = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': [
+#                         'Amazon Elastic Load Balancing',
+#                         'Amazon Elastic Load Balancer',
+#                         'Application Load Balancer',
+#                         'Network Load Balancer',
+#                         'Gateway Load Balancer'
+#                     ]
+#                 }
+#             }
+        
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_load_balancers,
+#                 Metrics=['UnblendedCost']
+#             )
 
-            response = ce_client.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_time.strftime('%Y-%m-%d'),
-                    'End': end_time.strftime('%Y-%m-%d'),
-                },
-                Granularity='DAILY',
-                Filter=filter_api_gateway,
-                Metrics=['UnblendedCost']
-            )
+#             data = response['ResultsByTime']
 
-            data = response['ResultsByTime']
+#             monthly_costs = {}
 
-            monthly_costs = {}
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
 
-            for result in data:
-                start_date = result['TimePeriod']['Start']
-                month_key = start_date[:7]
-                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
 
-                if month_key not in monthly_costs:
-                    monthly_costs[month_key] = Decimal(0)
+#                 monthly_costs[month_key] += Decimal(daily_cost)
 
-                monthly_costs[month_key] += Decimal(daily_cost)
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
 
-            total_cost = round(sum(monthly_costs.values()), 5)
-            average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
 
-            # Round monthly costs to about 5 decimals
-            for key, value in monthly_costs.items():
-                monthly_costs[key] = round(value, 5)
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
 
-            response_data = json.dumps({
-                'total_cost': total_cost,
-                'average_monthly_cost': average_monthly_cost,
-                'monthly_breakdown': monthly_costs,
-            }, cls=DecimalEncoder)
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
 
-            response = HttpResponse(response_data, content_type='application/json')
-            return response
-        except Exception as e:
-            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
-class VPC_cost_data(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
+# class EBS_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
 
-    def get(self, request, *args, **kwargs):
-        try:
-            access_key = settings.AWS_ACCESS_KEY_ID
-            secret_key = settings.AWS_SECRET_ACCESS_KEY
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
             
-            # Check if AWS credentials are configured
-            if not access_key or not secret_key:
-                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
 
-            # Configure the AWS client with the stored credentials
-            session = boto3.Session(
-                aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-            )
-            ce_client = session.client('ce')
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
 
-            # Get parameters from the request
-            end_time = datetime.utcnow()
-            time_range=request.GET.get('time-range')
-                            # Calculate start time based on the time range provided by the user
-            if time_range == "1 Week":
-                start_time = end_time - timedelta(weeks=1)
-            elif time_range == "15 Days":
-                start_time = end_time - timedelta(days=15)
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
             
-            elif time_range == "1 Month":
-                start_time = end_time - timedelta(weeks=4 * 1)
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
             
-            elif time_range == "3 Months":
-                start_time = end_time - timedelta(weeks=4 * 3)
-            elif time_range == "6 Months":
-                start_time = end_time - timedelta(weeks=4 * 6)
-            else:
-                # Handle the case when units_str is not provided or not a digit
-                return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
 
-            filter_vpc = {
-                'Dimensions': {
-                    'Key': 'SERVICE',
-                    'Values': ['Amazon Virtual Private Cloud']
-                }
-            }
+#             filter_ebs = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': [
+#                         'Amazon Elastic Block Store'
+#                     ]
+#                 }
+#             }
+        
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_ebs,
+#                 Metrics=['UnblendedCost']
+#             )
 
-            response = ce_client.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_time.strftime('%Y-%m-%d'),
-                    'End': end_time.strftime('%Y-%m-%d'),
-                },
-                Granularity='DAILY',
-                Filter=filter_vpc,
-                Metrics=['UnblendedCost']
-            )
+#             data = response['ResultsByTime']
 
-            data = response['ResultsByTime']
+#             monthly_costs = {}
 
-            monthly_costs = {}
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
 
-            for result in data:
-                start_date = result['TimePeriod']['Start']
-                month_key = start_date[:7]
-                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
 
-                if month_key not in monthly_costs:
-                    monthly_costs[month_key] = Decimal(0)
+#                 monthly_costs[month_key] += Decimal(daily_cost)
 
-                monthly_costs[month_key] += Decimal(daily_cost)
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
 
-            total_cost = round(sum(monthly_costs.values()), 5)
-            average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
 
-            # Round monthly costs to about 5 decimals
-            for key, value in monthly_costs.items():
-                monthly_costs[key] = round(value, 5)
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
 
-            response_data = json.dumps({
-                'total_cost': total_cost,
-                'average_monthly_cost': average_monthly_cost,
-                'monthly_breakdown': monthly_costs,
-            }, cls=DecimalEncoder)
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+        
+# class EIP_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
 
-            response = HttpResponse(response_data, content_type='application/json')
-            return response
-        except Exception as e:
-            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
-
-class SecretsManager_cost_data(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
-
-    def get(self, request, *args, **kwargs):
-        try:
-            access_key = settings.AWS_ACCESS_KEY_ID
-            secret_key = settings.AWS_SECRET_ACCESS_KEY
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
             
-            # Check if AWS credentials are configured
-            if not access_key or not secret_key:
-                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
 
-            # Configure the AWS client with the stored credentials
-            session = boto3.Session(
-                aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-            )
-            ce_client = session.client('ce')
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
 
-            # Get parameters from the request
-            end_time = datetime.utcnow()
-            time_range=request.GET.get('time-range')
-                            # Calculate start time based on the time range provided by the user
-            if time_range == "1 Week":
-                start_time = end_time - timedelta(weeks=1)
-            elif time_range == "15 Days":
-                start_time = end_time - timedelta(days=15)
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
             
-            elif time_range == "1 Month":
-                start_time = end_time - timedelta(weeks=4 * 1)
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
             
-            elif time_range == "3 Months":
-                start_time = end_time - timedelta(weeks=4 * 3)
-            elif time_range == "6 Months":
-                start_time = end_time - timedelta(weeks=4 * 6)
-            else:
-                # Handle the case when units_str is not provided or not a digit
-                return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
 
-            filter_secrets = {
-                'Dimensions': {
-                    'Key': 'SERVICE',
-                    'Values': ['AWS Secrets Manager']
-                }
-            }
+#             filter_eip = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': ['Elastic IP']
+#                 }
+#             }
+        
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_eip,
+#                 Metrics=['UnblendedCost']
+#             )
 
-            response = ce_client.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_time.strftime('%Y-%m-%d'),
-                    'End': end_time.strftime('%Y-%m-%d'),
-                },
-                Granularity='DAILY',
-                Filter=filter_secrets,
-                Metrics=['UnblendedCost']
-            )
+#             data = response['ResultsByTime']
 
-            data = response['ResultsByTime']
+#             monthly_costs = {}
 
-            monthly_costs = {}
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
 
-            for result in data:
-                start_date = result['TimePeriod']['Start']
-                month_key = start_date[:7]
-                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
 
-                if month_key not in monthly_costs:
-                    monthly_costs[month_key] = Decimal(0)
+#                 monthly_costs[month_key] += Decimal(daily_cost)
 
-                monthly_costs[month_key] += Decimal(daily_cost)
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
 
-            total_cost = round(sum(monthly_costs.values()), 5)
-            average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
 
-            # Round monthly costs to about 5 decimals
-            for key, value in monthly_costs.items():
-                monthly_costs[key] = round(value, 5)
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
 
-            response_data = json.dumps({
-                'total_cost': total_cost,
-                'average_monthly_cost': average_monthly_cost,
-                'monthly_breakdown': monthly_costs,
-            }, cls=DecimalEncoder)
-
-            response = HttpResponse(response_data, content_type='application/json')
-            return response
-        except Exception as e:
-            return JsonResponse({"error": f"An error occurred: {e}"}, content_type='application/json', status=500)
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)       
 
 
-class RDS_Cost_Data(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
-    def get(self, request, *args, **kwargs):
-        try:
-            access_key = settings.AWS_ACCESS_KEY_ID
-            secret_key = settings.AWS_SECRET_ACCESS_KEY
+# class SnapShot_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
+
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
             
-            # Check if AWS credentials are configured
-            if not access_key or not secret_key:
-                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
 
-            # Configure the AWS client with the stored credentials
-            session = boto3.Session(
-                aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-            )
-            ce_client = session.client('ce')
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
 
-            # Get parameters from the request
-            end_time = datetime.utcnow()
-            time_range=request.GET.get('time-range')
-                            # Calculate start time based on the time range provided by the user
-            if time_range == "1 Week":
-                start_time = end_time - timedelta(weeks=1)
-            elif time_range == "15 Days":
-                start_time = end_time - timedelta(days=15)
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
             
-            elif time_range == "1 Month":
-                start_time = end_time - timedelta(weeks=4 * 1)
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
             
-            elif time_range == "3 Months":
-                start_time = end_time - timedelta(weeks=4 * 3)
-            elif time_range == "6 Months":
-                start_time = end_time - timedelta(weeks=4 * 6)
-            else:
-                # Handle the case when units_str is not provided or not a digit
-                return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
 
-            filter_rds = {
-                'Dimensions': {
-                    'Key': 'SERVICE',
-                    'Values': ['Amazon Relational Database Service']
-                }
-            }
+#             filter_snapshot = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': ['EC2: EBS - Snapshots']
+#                 }
+#             }
+        
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_snapshot,
+#                 Metrics=['UnblendedCost']
+#             )
 
-            response = ce_client.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_time.strftime('%Y-%m-%d'),
-                    'End': end_time.strftime('%Y-%m-%d'),
-                },
-                Granularity='DAILY',
-                Filter=filter_rds,
-                Metrics=['UnblendedCost']
-            )
+#             data = response['ResultsByTime']
 
-            data = response['ResultsByTime']
+#             monthly_costs = {}
 
-            monthly_costs = {}
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
 
-            for result in data:
-                start_date = result['TimePeriod']['Start']
-                month_key = start_date[:7]
-                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
 
-                if month_key not in monthly_costs:
-                    monthly_costs[month_key] = Decimal(0)
+#                 monthly_costs[month_key] += Decimal(daily_cost)
 
-                monthly_costs[month_key] += Decimal(daily_cost)
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
 
-            total_cost = round(sum(monthly_costs.values()), 5)
-            average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
 
-            # Round monthly costs to about 5 decimals
-            for key, value in monthly_costs.items():
-                monthly_costs[key] = round(value, 5)
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
 
-            response_data = json.dumps({
-                'total_cost': total_cost,
-                'average_monthly_cost': average_monthly_cost,
-                'monthly_breakdown': monthly_costs,
-            }, cls=DecimalEncoder)
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500) 
+
+# class DocumentDB_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
+
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
             
-            response = HttpResponse(response_data, content_type='application/json')
-            return response
-        except Exception as e:
-            return JsonResponse({"error": f"An error occurred: {e}"}, content_type='application/json', status=500)
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
+
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
+            
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
+            
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
+
+#             filter_documentDb = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': ['DocumentDB']
+#                 }
+#             }
+        
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_documentDb,
+#                 Metrics=['UnblendedCost']
+#             )
+
+#             data = response['ResultsByTime']
+
+#             monthly_costs = {}
+
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
+
+#                 monthly_costs[month_key] += Decimal(daily_cost)
+
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
+
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
+
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+
+# class SNS_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
+
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
+            
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
+
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
+            
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
+            
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
+
+#             filter_sns = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': ['Amazon Simple Notification Service']
+#                 }
+#             }
+        
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_sns,
+#                 Metrics=['UnblendedCost']
+#             )
+
+#             data = response['ResultsByTime']
+
+#             monthly_costs = {}
+
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
+
+#                 monthly_costs[month_key] += Decimal(daily_cost)
+
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
+
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
+
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+         
+# class SES_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
+
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
+            
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
+
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
+            
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
+            
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
+
+#             filter_ses = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': ['Amazon Simple Email Service']
+#                 }
+#             }
+        
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_ses,
+#                 Metrics=['UnblendedCost']
+#             )
+
+#             data = response['ResultsByTime']
+
+#             monthly_costs = {}
+
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
+
+#                 monthly_costs[month_key] += Decimal(daily_cost)
+
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
+
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
+
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+                  
+# class ECR_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
+
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
+            
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
+
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
+            
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
+            
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
+#             else:
+#                 # Handle the case when units_str is not provided or not a digit
+#                 return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+
+#             filter_ecr = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': ['Amazon Elastic Container Registry']
+#                 }
+#             }
+
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_ecr,
+#                 Metrics=['UnblendedCost']
+#             )
+
+#             data = response['ResultsByTime']
+
+#             monthly_costs = {}
+
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
+
+#                 monthly_costs[month_key] += Decimal(daily_cost)
+
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
+
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
+
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+
+# class Lambda_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
+
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
+            
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
+
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
+            
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
+            
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
+#             else:
+#                 # Handle the case when units_str is not provided or not a digit
+#                 return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+
+#             filter_lambda = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': ['AWS Lambda']
+#                 }
+#             }
+
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_lambda,
+#                 Metrics=['UnblendedCost']
+#             )
+
+#             data = response['ResultsByTime']
+
+#             monthly_costs = {}
+
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
+
+#                 monthly_costs[month_key] += Decimal(daily_cost)
+
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
+
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
+
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+        
+# class ECS_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
+
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
+            
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
+
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
+            
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
+            
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
+#             else:
+#                 # Handle the case when units_str is not provided or not a digit
+#                 return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+
+#             filter_ecs = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': ['Amazon Elastic Container Service']
+#                 }
+#             }
+
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_ecs,
+#                 Metrics=['UnblendedCost']
+#             )
+
+#             data = response['ResultsByTime']
+
+#             monthly_costs = {}
+
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
+
+#                 monthly_costs[month_key] += Decimal(daily_cost)
+
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
+
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
+
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+
+
+# class WAF_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
+
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
+            
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
+
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
+            
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
+            
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
+#             else:
+#                 # Handle the case when units_str is not provided or not a digit
+#                 return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+
+#             filter_waf = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': ['AWS WAF']
+#                 }
+#             }
+
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_waf,
+#                 Metrics=['UnblendedCost']
+#             )
+
+#             data = response['ResultsByTime']
+
+#             monthly_costs = {}
+
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
+
+#                 monthly_costs[month_key] += Decimal(daily_cost)
+
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
+
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
+
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+# class APIGateway_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
+
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
+            
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
+
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
+            
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
+            
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
+#             else:
+#                 # Handle the case when units_str is not provided or not a digit
+#                 return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+
+#             filter_api_gateway = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': ['AmazonApiGateway']
+#                 }
+#             }
+
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_api_gateway,
+#                 Metrics=['UnblendedCost']
+#             )
+
+#             data = response['ResultsByTime']
+
+#             monthly_costs = {}
+
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
+
+#                 monthly_costs[month_key] += Decimal(daily_cost)
+
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
+
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
+
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500)
+
+# class SecretsManager_cost_data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
+
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
+            
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
+
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
+            
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
+            
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
+#             else:
+#                 # Handle the case when units_str is not provided or not a digit
+#                 return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+
+#             filter_secrets = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': ['AWS Secrets Manager']
+#                 }
+#             }
+
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_secrets,
+#                 Metrics=['UnblendedCost']
+#             )
+
+#             data = response['ResultsByTime']
+
+#             monthly_costs = {}
+
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
+
+#                 monthly_costs[month_key] += Decimal(daily_cost)
+
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
+
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
+
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"}, content_type='application/json', status=500)
+
+
+# class RDS_Cost_Data(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [AllowAny]
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             access_key = settings.AWS_ACCESS_KEY_ID
+#             secret_key = settings.AWS_SECRET_ACCESS_KEY
+            
+#             # Check if AWS credentials are configured
+#             if not access_key or not secret_key:
+#                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+#             # Configure the AWS client with the stored credentials
+#             session = boto3.Session(
+#                 aws_access_key_id=access_key,
+#                 aws_secret_access_key=secret_key,
+#             )
+#             ce_client = session.client('ce')
+
+#             # Get parameters from the request
+#             end_time = datetime.utcnow()
+#             time_range=request.GET.get('time-range')
+#                             # Calculate start time based on the time range provided by the user
+#             if time_range == "1 Week":
+#                 start_time = end_time - timedelta(weeks=1)
+#             elif time_range == "15 Days":
+#                 start_time = end_time - timedelta(days=15)
+            
+#             elif time_range == "1 Month":
+#                 start_time = end_time - timedelta(weeks=4 * 1)
+            
+#             elif time_range == "3 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 3)
+#             elif time_range == "6 Months":
+#                 start_time = end_time - timedelta(weeks=4 * 6)
+#             else:
+#                 # Handle the case when units_str is not provided or not a digit
+#                 return JsonResponse({'error': 'Invalid units parameter'}, status=400)
+
+#             filter_rds = {
+#                 'Dimensions': {
+#                     'Key': 'SERVICE',
+#                     'Values': ['Amazon Relational Database Service']
+#                 }
+#             }
+
+#             response = ce_client.get_cost_and_usage(
+#                 TimePeriod={
+#                     'Start': start_time.strftime('%Y-%m-%d'),
+#                     'End': end_time.strftime('%Y-%m-%d'),
+#                 },
+#                 Granularity='DAILY',
+#                 Filter=filter_rds,
+#                 Metrics=['UnblendedCost']
+#             )
+
+#             data = response['ResultsByTime']
+
+#             monthly_costs = {}
+
+#             for result in data:
+#                 start_date = result['TimePeriod']['Start']
+#                 month_key = start_date[:7]
+#                 daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+#                 if month_key not in monthly_costs:
+#                     monthly_costs[month_key] = Decimal(0)
+
+#                 monthly_costs[month_key] += Decimal(daily_cost)
+
+#             total_cost = round(sum(monthly_costs.values()), 5)
+#             average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+
+#             # Round monthly costs to about 5 decimals
+#             for key, value in monthly_costs.items():
+#                 monthly_costs[key] = round(value, 5)
+
+#             response_data = json.dumps({
+#                 'total_cost': total_cost,
+#                 'average_monthly_cost': average_monthly_cost,
+#                 'monthly_breakdown': monthly_costs,
+#             }, cls=DecimalEncoder)
+            
+#             response = HttpResponse(response_data, content_type='application/json')
+#             return response
+#         except Exception as e:
+#             return JsonResponse({"error": f"An error occurred: {e}"}, content_type='application/json', status=500)
 
 overall_unused_data = []
 overall_unused_data_count=[]
@@ -4827,7 +5616,7 @@ class EC2Recommendation(APIView):
     permission_classes = [AllowAny]
 
     def __init__(self):
-        self.ec2_url = 'http://13.232.78.91:8080/api/ec2_memory_data/?time-range=1 Month&units=1'
+        self.ec2_url = 'http://127.0.0.1:8080/api/ec2_memory_data/?time-range=1 Month&units=1'
 
     def load_data(self):
         """
@@ -6207,4 +6996,372 @@ class AWS_Unused_Resource_and_EC2_Compute(APIView):
         except Exception as e:
             # Handle exceptions appropriately
             return JsonResponse({'error': str(e)}, status=500)
+        
+class EKS_Data(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
 
+    def get(self, request):
+        try:
+            print("hie")
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+
+            # Check if AWS credentials are configured
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+            # Configure the AWS client with the stored credentials
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                region_name='ap-south-1'  # Specify your desired region
+            )
+            eks_client = session.client('eks')
+
+            # Get the list of clusters
+            clusters_response = eks_client.list_clusters()
+            cluster_names = clusters_response.get('clusters', [])
+
+            cluster_details = []
+            for cluster_name in cluster_names:
+                # Describe each cluster to get detailed information
+                response = eks_client.describe_cluster(name=cluster_name)
+                cluster_info = response.get('cluster', {})
+                cluster_details.append(cluster_info)
+
+            response_json = json.dumps(cluster_details, indent=4)
+            return JsonResponse(cluster_details, safe=False)
+
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
+
+
+class Document_DB_Details(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    def get(self,request):
+        try:
+            print("hi")
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+            print("hi")
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+        
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key
+            )
+            client = session.client('docdb')
+            db_instance_response = client.describe_db_instances()
+
+            return JsonResponse(db_instance_response, safe=False)
+
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {str(e)}"}, status=500)
+
+class SNS_Details(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    def get(self,request):
+        try:
+            print("hi")
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+            print("hi")
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+        
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key
+            )
+            client = session.client('sns')
+            sns_details = client.list_topics()
+            return JsonResponse(sns_details, safe=False, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {str(e)}"}, status=500)
+        
+class Services_Cost_Data(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+    services={
+        'ec2':['Amazon Elastic Compute Cloud - Compute'],
+        'vpc':['Amazon Virtual Private Cloud'],
+        's3':['Amazon Simple Storage Service'],
+        'loadbalancer':['Amazon Elastic Load Balancing','Amazon Elastic Load Balancer','Application Load Balancer','Network Load Balancer','Gateway Load Balancer'],
+        'ebs':['Amazon Elastic Block Store'],
+        'eip':['Elastic IP'],
+        'snapshot':['EC2: EBS - Snapshots'],
+        'documentdb':['DocumentDB'],
+        'sns':['Amazon Simple Notification Service'],
+        'ses': ['Amazon Simple Email Service'],
+        'ecr':['Amazon Elastic Container Registry'],
+        'lambda':['AWS Lambda'],
+        'ecs':['Amazon Elastic Container Service'],
+        'waf':['AWS WAF'],
+        'secrets':['AWS Secrets Manager'],
+        'rds':['Amazon Relational Database Service'],
+        'apigateway':['AmazonApiGateway'],
+    }
+
+    def get(self, request, *args, **kwargs):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+            
+            # Check if AWS credentials are configured
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+            
+            service=request.GET.get('service')
+            if service not in self.services:
+                return JsonResponse({'error': 'service not available'}, status=400)
+            
+            # Configure the AWS client with the stored credentials
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+            )
+            ce_client = session.client('ce')
+
+            # Get parameters from the request
+            end_time = datetime.utcnow()
+            time_range=request.GET.get('time-range')
+                            # Calculate start time based on the time range provided by the user
+            if time_range == "1 Week":
+                start_time = end_time - timedelta(weeks=1)
+            elif time_range == "15 Days":
+                start_time = end_time - timedelta(days=15)
+            
+            elif time_range == "1 Month":
+                start_time = end_time - timedelta(weeks=4 * 1)
+            
+            elif time_range == "3 Months":
+                start_time = end_time - timedelta(weeks=4 * 3)
+            elif time_range == "6 Months":
+                start_time = end_time - timedelta(weeks=4 * 6)
+
+            
+            filter= {
+                'Dimensions': {
+                    'Key': 'SERVICE',
+                    'Values': self.services[service]
+                }
+            }
+        
+            response = ce_client.get_cost_and_usage(
+                TimePeriod={
+                    'Start': start_time.strftime('%Y-%m-%d'),
+                    'End': end_time.strftime('%Y-%m-%d'),
+                },
+                Granularity='DAILY',
+                Filter=filter,
+                Metrics=['UnblendedCost']
+            )
+
+            data = response['ResultsByTime']
+
+            monthly_costs = {}
+
+            for result in data:
+                start_date = result['TimePeriod']['Start']
+                month_key = start_date[:7]
+                daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+                if month_key not in monthly_costs:
+                    monthly_costs[month_key] = Decimal(0)
+
+                monthly_costs[month_key] += Decimal(daily_cost)
+
+            total_cost = round(sum(monthly_costs.values()), 5)
+            average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+
+            # Round monthly costs to about 5 decimals
+            for key, value in monthly_costs.items():
+                monthly_costs[key] = round(value, 5)
+
+            response_data = json.dumps({
+                'service': self.services[service],
+                'total_cost': total_cost,
+                'average_monthly_cost': average_monthly_cost,
+                'monthly_breakdown': monthly_costs,
+            }, cls=DecimalEncoder)
+
+            response = HttpResponse(response_data, content_type='application/json')
+            return response
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {e}"},content_type='application/json', status=500) 
+
+def get_location_name(region_code):
+    ec2 = boto3.client("ec2", region_name=region_code)
+    ec2_responses = ec2.describe_regions()
+    ssm_client = boto3.client('ssm', region_name=region_code)
+    for resp in ec2_responses['Regions']:
+        region_id = resp['RegionName']
+        tmp = '/aws/service/global-infrastructure/regions/%s/longName' % region_code
+        ssm_response = ssm_client.get_parameter(Name = tmp)
+        region_name = ssm_response['Parameter']['Value'] 
+        print ("region_id:",region_id,"region_name:",region_name)
+    return region_name
+
+def get_ec2_pricing(instance_type, region, os):
+    pricing_client = boto3.client('pricing')  # Use 'us-east-1' for pricing API
+
+    location = get_location_name(region)
+
+    if not location:
+        return "Invalid region"
+    
+    response = pricing_client.get_products(
+        ServiceCode='AmazonEC2',
+        Filters=[
+            {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
+            {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': location},
+            {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': str(os)},
+            {'Type': 'TERM_MATCH', 'Field': 'productFamily', 'Value': 'Compute Instance'},
+            {'Type': 'TERM_MATCH', 'Field': 'tenancy', 'Value': 'shared'},  # Example tenancy filter
+            {'Type': 'TERM_MATCH', 'Field': 'licenseModel', 'Value': 'No License required'},
+        ],
+        MaxResults=1
+    )
+
+    for price_item in response['PriceList']:
+        price_item = json.loads(price_item)
+        terms = price_item['terms'].get('OnDemand', {})
+        if terms:
+            price_dimensions = list(terms.values())[0]['priceDimensions']
+            price_per_hour = list(price_dimensions.values())[0]['pricePerUnit']['USD']
+            return price_per_hour
+    return None
+
+def calculate_instance_cost(time_range, price_per_hour):
+    try:
+        duration = time_range
+        duration_hours = duration*24
+        total_cost= int(duration_hours) * float(price_per_hour)
+        return total_cost
+    except Exception as e:
+        print(f"Error in calculate_instance_cost: {e}")
+        return 0  # Return 0 in case of any error
+        
+class EC2_Instance_Cost(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+    def get(self,request):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                region_name='ap-south-1'
+            )
+
+            ec2_client = session.client('ec2')
+            instances = ec2_client.describe_instances()['Reservations']
+            ec2_description = []
+            time_range=request.GET.get('time-range')
+            if time_range == "1 Week":
+                duration = timedelta(weeks=1)
+            elif time_range == "15 Days":
+                duration = timedelta(days=15)
+            
+            elif time_range == "1 Month":
+                duration = timedelta(weeks=4 * 1)
+            
+            elif time_range == "3 Months":
+                duration = timedelta(weeks=4 * 3)
+            elif time_range == "6 Months":
+                duration = timedelta(weeks=4 * 6)
+
+            # return Response(instances)
+            for info in instances:
+                for detail in info['Instances']:
+                    instance_detail = {}
+                    instance_detail['InstanceId'] = detail['InstanceId']
+                    instance_detail['InstanceType'] = detail['InstanceType']
+                    instance_detail['AvailabilityZone'] = detail['Placement']['AvailabilityZone'][:-1]
+                    instance_detail['PrivateIpAddress'] = detail['PrivateIpAddress']
+                    instance_detail['SubnetId'] = detail['SubnetId']
+                    instance_detail['VpcId'] = detail['VpcId']
+                    instance_detail['Ebs-VolumeId'] = [{ebs['Ebs']['VolumeId']:ebs['Ebs']['Status']} for ebs in detail['BlockDeviceMappings']]
+                    instance_detail['PlatformDetails'] = detail['PlatformDetails'].split("/")[0]
+                    instance_detail['CpuOptions'] = detail['CpuOptions']
+                    price_per_hour = get_ec2_pricing(detail['InstanceType'], detail['Placement']['AvailabilityZone'][:-1],detail['PlatformDetails'].split("/")[0])
+                    instance_detail['duration']=duration
+                    instance_cost = calculate_instance_cost(duration.days, price_per_hour)
+                    instance_detail['costperhour']=price_per_hour
+                    instance_detail['InstanceCost'] = instance_cost
+                    ec2_description.append(instance_detail)
+            return Response(ec2_description)
+            
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
+
+class EC2_REGION_WISE_COST_DATA(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+ 
+            if not access_key or not secret_key:
+                return Response({'error': 'AWS credentials are not configured'}, status=400)
+ 
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                region_name="ap-south-1",
+            )
+            ec2_client = session.client('ec2')
+ 
+            regions_response = ec2_client.describe_regions()
+            regions = [region['RegionName'] for region in regions_response['Regions']]
+            region_instance_map = {}
+            time_range=request.GET.get('time-range')
+            if time_range == "1 Week":
+                duration = timedelta(weeks=1)
+            elif time_range == "15 Days":
+                duration = timedelta(days=15)
+            
+            elif time_range == "1 Month":
+                duration = timedelta(weeks=4 * 1)
+            
+            elif time_range == "3 Months":
+                duration = timedelta(weeks=4 * 3)
+            elif time_range == "6 Months":
+                duration = timedelta(weeks=4 * 6)
+ 
+            for region in regions:
+                ec2_client = session.client('ec2', region_name=region)
+                instances_response = ec2_client.describe_instances()
+                instances = []
+                for reservation in instances_response['Reservations']:
+                    for instance in reservation['Instances']:
+                        instance_id = instance['InstanceId']
+                        instance_type = instance['InstanceType']
+                        print(instance)
+                        os = instance['PlatformDetails'].split("/")[0]
+                        cost_data = get_ec2_pricing(instance_type,region, os)
+                        total_cost=calculate_instance_cost(duration.days,cost_data)
+                        instances.append({
+                            'InstanceId': instance_id,
+                            'InstanceType': instance_type,
+                            'os':os,
+                            'TotalCost': total_cost,
+                            'CostPerHour': cost_data
+                        })
+                region_instance_map[region] = instances
+ 
+            return Response(region_instance_map)
+ 
+        except Exception as e:
+            return Response({"error": f"An error occurred: {e}"}, status=500)

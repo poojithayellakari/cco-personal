@@ -1,0 +1,86 @@
+[
+    {
+        "Region": "ap-south-1",
+        "LoadBalancerName": "app/GPTdemo/4689a2e9d4f0d045",
+        "Metrics": [
+            {
+                "MetricName": "TargetResponseTime",
+                "Statistic": "Average",
+                "MetricValue": null
+            },
+            {
+                "MetricName": "ActiveConnectionCount",
+                "Statistic": "Average",
+                "MetricValue": 1.2819073883080407
+            },
+            {
+                "MetricName": "NewConnectionCount",
+                "Statistic": "Sum",
+                "MetricValue": 24739.0
+            }
+        ]
+    },
+    {
+        "Region": "us-east-1",
+        "LoadBalancerName": "app/ecs-services/12eea9548101883c",
+        "Metrics": [
+            {
+                "MetricName": "TargetResponseTime",
+                "Statistic": "Average",
+                "MetricValue": null
+            },
+            {
+                "MetricName": "ActiveConnectionCount",
+                "Statistic": "Average",
+                "MetricValue": null
+            },
+            {
+                "MetricName": "NewConnectionCount",
+                "Statistic": "Sum",
+                "MetricValue": null
+            }
+        ]
+    },
+    {
+        "Region": "us-east-1",
+        "LoadBalancerName": "app/sp-config-lb/910834d072313b18",
+        "Metrics": [
+            {
+                "MetricName": "TargetResponseTime",
+                "Statistic": "Average",
+                "MetricValue": null
+            },
+            {
+                "MetricName": "ActiveConnectionCount",
+                "Statistic": "Average",
+                "MetricValue": null
+            },
+            {
+                "MetricName": "NewConnectionCount",
+                "Statistic": "Sum",
+                "MetricValue": null
+            }
+        ]
+    },
+    {
+        "Region": "us-east-2",
+        "LoadBalancerName": "app/ecs-lb/5e2fdec938dfe8b3",
+        "Metrics": [
+            {
+                "MetricName": "TargetResponseTime",
+                "Statistic": "Average",
+                "MetricValue": null
+            },
+            {
+                "MetricName": "ActiveConnectionCount",
+                "Statistic": "Average",
+                "MetricValue": null
+            },
+            {
+                "MetricName": "NewConnectionCount",
+                "Statistic": "Sum",
+                "MetricValue": null
+            }
+        ]
+    }
+]
