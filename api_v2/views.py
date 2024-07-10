@@ -7091,11 +7091,11 @@ class Services_Cost_Data(APIView):
         'ec2':['Amazon Elastic Compute Cloud - Compute'],
         'vpc':['Amazon Virtual Private Cloud'],
         's3':['Amazon Simple Storage Service'],
-        'loadbalancer':['Amazon Elastic Load Balancing','Amazon Elastic Load Balancer','Application Load Balancer','Network Load Balancer','Gateway Load Balancer'],
+        'lbr':['Amazon Elastic Load Balancing','Amazon Elastic Load Balancer','Application Load Balancer','Network Load Balancer','Gateway Load Balancer'],
         'ebs':['Amazon Elastic Block Store'],
         'eip':['Elastic IP'],
-        'snapshot':['EC2: EBS - Snapshots'],
-        'documentdb':['DocumentDB'],
+        'ss':['EC2: EBS - Snapshots'],
+        'docdb':['DocumentDB'],
         'sns':['Amazon Simple Notification Service'],
         'ses': ['Amazon Simple Email Service'],
         'ecr':['Amazon Elastic Container Registry'],
@@ -7104,7 +7104,7 @@ class Services_Cost_Data(APIView):
         'waf':['AWS WAF'],
         'secrets':['AWS Secrets Manager'],
         'rds':['Amazon Relational Database Service'],
-        'apigateway':['AmazonApiGateway'],
+        'api':['AmazonApiGateway'],
     }
 
     def get(self, request, *args, **kwargs):

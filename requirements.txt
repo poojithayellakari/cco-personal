@@ -22,7 +22,7 @@ packaging==23.1
 pandas==2.1.1
 Pillow==9.5.0
 pluggy==1.0.0
-psycopg2==2.9.
+psycopg2-binary
 PyJWT==2.6.0
 pyparsing==3.1.1
 pytest==7.3.1
@@ -36,3 +36,5 @@ sqlparse==0.4.3
 typing==3.7.4.3
 tzdata==2023.3
 urllib3==1.26.15
+setuptools
+requests
