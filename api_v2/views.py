@@ -43,9 +43,8 @@ from .forms import AWSConfigForm
 import re
 import requests
 from rest_framework.generics import ListAPIView
-
-
-
+import base64
+from cryptography.fernet import Fernet
 
 class AWSConfigure(APIView):
     authentication_classes=[JWTAuthentication]
@@ -133,7 +132,6 @@ class AWSAccountDetails(APIView):
             return Response(output_data)
         except Exception as e:
             return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
-
 class AWSResourcesListCount(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
@@ -618,7 +616,6 @@ class EC2_Memory_utilization(APIView):
             access_key = settings.AWS_ACCESS_KEY_ID
             secret_key = settings.AWS_SECRET_ACCESS_KEY
 
-            # Check if AWS credentials are configured
             if not access_key or not secret_key:
                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
 
@@ -2175,6 +2172,7 @@ class Get_WAF_Data(APIView):
             return response
         except Exception as e:
                 return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
+        
 def run_df_command(instance_id, ssm_client):
     # Specify the command to run
     commands = ['df -hT && lsblk -o NAME,KNAME,SIZE,MOUNTPOINT,TYPE']
@@ -7184,6 +7182,7 @@ class Services_Cost_Data(APIView):
                 monthly_costs[key] = round(value, 5)
 
             response_data = json.dumps({
+                'short_service':service,
                 'service': self.services[service],
                 'total_cost': total_cost,
                 'average_monthly_cost': average_monthly_cost,
@@ -7259,11 +7258,10 @@ class EC2_Instance_Cost(APIView):
                 return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
             session = boto3.Session(
                 aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-                region_name='ap-south-1'
+                aws_secret_access_key=secret_key
             )
 
-            ec2_client = session.client('ec2')
+            ec2_client = session.client('ec2',region_name='ap-south-1')
             instances = ec2_client.describe_instances()['Reservations']
             ec2_description = []
             time_range=request.GET.get('time-range')
@@ -7365,3 +7363,224 @@ class EC2_REGION_WISE_COST_DATA(APIView):
  
         except Exception as e:
             return Response({"error": f"An error occurred: {e}"}, status=500)
+        
+class GetTotalPercentageIncrease(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+            # Configure the AWS client with the stored credentials
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+            )
+            client = session.client('ce', region_name='us-east-1')
+
+            # Define the time periods
+            end_date = datetime.utcnow().replace(day=1)
+            start_date = (end_date - timedelta(days=1)).replace(day=1)
+            prev_start_date = (start_date - timedelta(days=1)).replace(day=1)
+            prev_end_date = start_date - timedelta(days=1)
+
+            # Fetch current month cost
+            current_month_data = client.get_cost_and_usage(
+                TimePeriod={'Start': start_date.strftime('%Y-%m-%d'), 'End': end_date.strftime('%Y-%m-%d')},
+                Granularity='MONTHLY',
+                Metrics=['UnblendedCost']
+            )
+
+            # Fetch previous month cost
+            prev_month_data = client.get_cost_and_usage(
+                TimePeriod={'Start': prev_start_date.strftime('%Y-%m-%d'), 'End': prev_end_date.strftime('%Y-%m-%d')},
+                Granularity='MONTHLY',
+                Metrics=['UnblendedCost']
+            )
+
+            current_cost = float(current_month_data['ResultsByTime'][0]['Total']['UnblendedCost']['Amount'])
+            prev_cost = float(prev_month_data['ResultsByTime'][0]['Total']['UnblendedCost']['Amount'])
+
+            # Calculate percentage increase
+            if prev_cost == 0:
+                percentage_increase = 100.0
+            else:
+                percentage_increase = ((current_cost - prev_cost) / prev_cost) * 100
+
+            data = {
+                'current_cost': current_cost,
+                'previous_cost': prev_cost,
+                'percentage_increase': percentage_increase,
+            }
+            return JsonResponse(data)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500) 
+        
+class GetPercentageIncrease(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+            # Configure the AWS client with the stored credentials
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+            )
+            client = session.client('ce', region_name='us-east-1')
+
+            # Define the time periods
+            end_date = datetime.utcnow().replace(day=1)
+            start_date = (end_date - timedelta(days=1)).replace(day=1)
+            prev_start_date = (start_date - timedelta(days=1)).replace(day=1)
+            prev_end_date = start_date - timedelta(days=1)
+
+            # Function to fetch cost data
+            def fetch_cost_data(client, start_date, end_date):
+                return client.get_cost_and_usage(
+                    TimePeriod={'Start': start_date.strftime('%Y-%m-%d'), 'End': end_date.strftime('%Y-%m-%d')},
+                    Granularity='MONTHLY',
+                    Metrics=['UnblendedCost'],
+                    GroupBy=[{'Type': 'DIMENSION', 'Key': 'SERVICE'}]
+                )
+
+            # Fetch cost data for current and previous month
+            current_month_data = fetch_cost_data(client, start_date, end_date)
+            prev_month_data = fetch_cost_data(client, prev_start_date, prev_end_date)
+
+            # Function to extract cost for a specific service
+            def extract_cost(data, service_name):
+                for group in data['ResultsByTime'][0]['Groups']:
+                    if service_name in group['Keys']:
+                        return float(group['Metrics']['UnblendedCost']['Amount'])
+                return 0.0
+
+            # List of services to calculate percentage increase for
+            services = ['Amazon Elastic Compute Cloud - Compute', 'AWS Lambda', 'Amazon Simple Storage Service', 'AWS WAF']
+
+            cost_data = {}
+
+            for service in services:
+                current_cost = extract_cost(current_month_data, service)
+                prev_cost = extract_cost(prev_month_data, service)
+
+                if prev_cost == 0:
+                    percentage_increase = 100.0 if current_cost != 0 else 0.0
+                else:
+                    percentage_increase = ((current_cost - prev_cost) / prev_cost) * 100
+
+                cost_data[service] = {
+                    'current_cost': current_cost,
+                    'previous_cost': prev_cost,
+                    'percentage_increase': percentage_increase,
+                }
+
+            return JsonResponse(cost_data)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+        
+class Services3_Cost_Data(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    services = {
+        'ec2': ['Amazon Elastic Compute Cloud - Compute'],
+        's3': ['Amazon Simple Storage Service'],
+        'lambda': ['AWS Lambda']
+    }
+
+    def get(self, request, *args, **kwargs):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+
+            # Check if AWS credentials are configured
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+            time_range = request.GET.get('time-range')
+            fy_start_year = datetime.utcnow().year
+            fy_end_year = fy_start_year + 1
+
+            if time_range == "Q1":
+                start_time = datetime(fy_start_year, 4, 1)
+                end_time = datetime(fy_start_year, 7, 31)
+            elif time_range == "Q2":
+                start_time = datetime(fy_start_year, 8, 1)
+                end_time = datetime(fy_start_year, 11, 30)
+            elif time_range == "Q3":
+                start_time = datetime(fy_start_year, 12, 1)
+                end_time = datetime(fy_end_year, 3, 31)
+            else:
+                return JsonResponse({'error': 'Invalid time range specified'}, status=400)
+
+            # Configure the AWS client with the stored credentials
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+            )
+            ce_client = session.client('ce')
+
+            response_data = {}
+
+            for service, dimensions in self.services.items():
+                filter = {
+                    'Dimensions': {
+                        'Key': 'SERVICE',
+                        'Values': dimensions
+                    }
+                }
+
+                response = ce_client.get_cost_and_usage(
+                    TimePeriod={
+                        'Start': start_time.strftime('%Y-%m-%d'),
+                        'End': end_time.strftime('%Y-%m-%d'),
+                    },
+                    Granularity='MONTHLY',
+                    Filter=filter,
+                    Metrics=['UnblendedCost']
+                )
+
+                data = response['ResultsByTime']
+
+                monthly_costs = {}
+
+                for result in data:
+                    start_date = result['TimePeriod']['Start']
+                    month_key = start_date[:7]
+                    daily_cost = round(float(result['Total']['UnblendedCost']['Amount']), 5)
+
+                    if month_key not in monthly_costs:
+                        monthly_costs[month_key] = Decimal(0)
+
+                    monthly_costs[month_key] += Decimal(daily_cost)
+
+                total_cost = round(sum(monthly_costs.values()), 5)
+                average_monthly_cost = round(total_cost / len(monthly_costs), 5)
+
+                response_data[service] = {
+                    'short_service': service,
+                    'service': dimensions,
+                    'total_cost': total_cost,
+                    'average_monthly_cost': average_monthly_cost,
+                    'monthly_breakdown': monthly_costs,
+                }
+
+            return JsonResponse(response_data)
+
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
