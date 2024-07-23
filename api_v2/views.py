@@ -7584,3 +7584,122 @@ class Services3_Cost_Data(APIView):
 
         except Exception as e:
             return JsonResponse({"error": f"An error occurred: {e}"}, status=500)
+class EC2InstancesAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+            )
+
+            client = session.client('ec2')
+            regions = client.describe_regions()['Regions']
+            ec2_instances = {}
+
+            for region in regions:
+                region_name = region['RegionName']
+                ec2_client = session.client('ec2', region_name=region_name)
+                instances = ec2_client.describe_instances()
+                if instances['Reservations']:
+                    instance_details = []
+                    for reservation in instances['Reservations']:
+                        for instance in reservation['Instances']:
+                            instance_details.append({
+                                'InstanceId': instance['InstanceId'],
+                                'InstanceType': instance['InstanceType'],
+                                'State': instance['State']['Name'],
+                            })
+                    ec2_instances[region_name] = instance_details
+
+            return JsonResponse(ec2_instances, safe=False)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+class S3BucketsAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+            )
+
+            client = session.client('ec2')
+            regions = client.describe_regions()['Regions']
+            s3_buckets = {}
+
+            for region in regions:
+                region_name = region['RegionName']
+                s3_client = session.client('s3', region_name=region_name)
+                buckets = s3_client.list_buckets()
+                if buckets['Buckets']:
+                    bucket_details = []
+                    for bucket in buckets['Buckets']:
+                        bucket_details.append({
+                            'BucketName': bucket['Name'],
+                            'CreationDate': bucket['CreationDate'].isoformat()
+                        })
+                    s3_buckets[region_name] = bucket_details
+
+            return JsonResponse(s3_buckets, safe=False)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+        
+class ElasticIPsAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            access_key = settings.AWS_ACCESS_KEY_ID
+            secret_key = settings.AWS_SECRET_ACCESS_KEY
+
+            if not access_key or not secret_key:
+                return JsonResponse({'error': 'AWS credentials are not configured'}, status=400)
+
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+            )
+
+            client = session.client('ec2')
+            regions = client.describe_regions()['Regions']
+            elastic_ips = {}
+
+            for region in regions:
+                region_name = region['RegionName']
+                ec2_client = session.client('ec2', region_name=region_name)
+                addresses = ec2_client.describe_addresses()
+
+                if addresses['Addresses']:
+                    eip_details = []
+                    for address in addresses['Addresses']:
+                        eip_details.append({
+                            'PublicIp': address.get('PublicIp'),
+                            'AllocationId': address.get('AllocationId'),
+                            'AssociationId': address.get('AssociationId'),
+                            'Domain': address.get('Domain'),
+                        })
+                    elastic_ips[region_name] = eip_details
+
+            return JsonResponse(elastic_ips, safe=False)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
