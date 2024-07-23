@@ -49,7 +49,9 @@ urlpatterns = [
     path('api/total_percentage_increase/',views.GetTotalPercentageIncrease.as_view(),name='total_increase'),
     path('api/percentage_increase/', views.GetPercentageIncrease.as_view(), name='percentage_increase'),
     path('api/services3_cost_data/',views.Services3_Cost_Data.as_view(),name='service3'),
-    
+    path('ec2instancesapiview/', views.EC2InstancesAPIView.as_view(), name='ec2-by-region'),
+    path('s3bucketsapiview/', views.S3BucketsAPIView.as_view(), name='s3-by-region'),
+    path('eipdetailsapiview/',views.ElasticIPsAPIView.as_view(), name='eip-by-region'),
     # path('api/ec2_cost_data/',views.EC2_instance_cost_data.as_view(),name='ec2_cost'),
     # path('api/s3_cost_data/',views.S3_cost_data.as_view(),name='s3_cost_data'),
     # path('api/vpc_cost_data/',views.VPC_cost_data.as_view(),name='vpc-cost'),
